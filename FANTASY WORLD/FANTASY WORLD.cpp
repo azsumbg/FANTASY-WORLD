@@ -207,7 +207,7 @@ void InitGame()
     {
         for (int cols = 0; cols < 20; cols++)
         {
-            FieldGrid[rows][cols] = dll::BUILDING::TileFactory(buildings::snow_tile, (float)(cols * 50), (float)(rows * 50));
+            FieldGrid[rows][cols] = dll::BUILDING::TileFactory(buildings::snow_tile, (float)(cols * 50), (float)(rows * 50 + 50));
         }
     }
 
@@ -783,7 +783,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             else Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmTxt, b3TxtRect, txtHgltBrush);
         }
 
+        for (int row = 0; row < 13; row++)
+        {
+            for (int col = 0; col < 20; col++)
+            {
+                switch (FieldGrid[row][col]->type)
+                {
+                case buildings::snow_tile:
+                    Draw->DrawBitmap(bmpSnow, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                        FieldGrid[row][col]->ex, FieldGrid[row][col]->ey));
+                    break;
 
+                case buildings::soil_tile:
+                    Draw->DrawBitmap(bmpSoil, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                        FieldGrid[row][col]->ex, FieldGrid[row][col]->ey));
+                    break;
+                }
+            }
+        }
 
 
         //////////////////////////////////////////////////////
