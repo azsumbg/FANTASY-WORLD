@@ -211,6 +211,79 @@ void InitGame()
         }
     }
 
+    int first_home_col = (int)(rand() % 15);
+    float first_home_x = FieldGrid[9][first_home_col]->x;
+    TownHall = dll::BUILDING::TileFactory(buildings::townhall, first_home_x, FieldGrid[9][0]->y);
+    
+    FieldGrid[8][first_home_col]->type = buildings::soil_tile;
+    FieldGrid[9][first_home_col]->type = buildings::soil_tile;
+    FieldGrid[10][first_home_col]->type = buildings::soil_tile;
+    FieldGrid[11][first_home_col]->type = buildings::soil_tile;
+    FieldGrid[12][first_home_col]->type = buildings::soil_tile;
+
+    if (first_home_col >= 2)
+    {
+        FieldGrid[8][first_home_col - 2]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col - 2]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col - 2]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col - 2]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col - 2]->type = buildings::soil_tile;
+        FieldGrid[8][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col - 1]->type = buildings::soil_tile;
+    }
+    else if (first_home_col > 1)
+    {
+        FieldGrid[8][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col - 1]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col - 1]->type = buildings::soil_tile;
+    }
+
+    if (first_home_col <= 17)
+    {
+        FieldGrid[8][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[8][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[8][first_home_col + 3]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col + 3]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col + 3]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col + 3]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col + 3]->type = buildings::soil_tile;
+    }
+    else if (first_home_col <= 18)
+    {
+        FieldGrid[8][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[8][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col + 2]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col + 2]->type = buildings::soil_tile;
+    }
+    else if (first_home_col <= 19)
+    {
+        FieldGrid[8][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[9][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[10][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[11][first_home_col + 1]->type = buildings::soil_tile;
+        FieldGrid[12][first_home_col + 1]->type = buildings::soil_tile;
+    }
+
+   
 }
 
 void GameOver()
@@ -757,6 +830,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         ///////////////////////////////////////////////////
 
+      
+
+
+
+
+
+
+
 
 
 
@@ -783,6 +864,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             else Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmTxt, b3TxtRect, txtHgltBrush);
         }
 
+
         for (int row = 0; row < 13; row++)
         {
             for (int col = 0; col < 20; col++)
@@ -801,6 +883,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
+        if (TownHall)Draw->DrawBitmap(bmpTownHall, D2D1::RectF(TownHall->x, TownHall->y, TownHall->ex, TownHall->ey));
+
+
 
 
         //////////////////////////////////////////////////////
