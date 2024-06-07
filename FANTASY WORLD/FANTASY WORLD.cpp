@@ -71,7 +71,13 @@ bool b1Hglt = false;
 bool b2Hglt = false;
 bool b3Hglt = false;
 
+bool carry_house = false;
+bool carry_wall = false;
+bool carry_heroe = false;
+bool carry_tower = false;
+
 int score = 0;
+int wood = 100;
 float game_speed = 0.5f;
 int mins = 0;
 int secs = 0;
@@ -84,6 +90,7 @@ ID2D1RadialGradientBrush* butBckg = nullptr;
 ID2D1SolidColorBrush* txtBrush = nullptr;
 ID2D1SolidColorBrush* txtInactBrush = nullptr;
 ID2D1SolidColorBrush* txtHgltBrush = nullptr;
+ID2D1SolidColorBrush* FieldBrush = nullptr;
 
 IDWriteFactory* iWriteFactory = nullptr;
 IDWriteTextFormat* nrmTxt = nullptr;
@@ -113,14 +120,14 @@ std::vector<dll::Creature> vHeroes;
 std::vector<dll::Creature> vEvils;
 std::vector<dll::OBJECT> vAxes;
 
-dll::BUILDING* FieldGrid[13][20];
+dll::BUILDING* FieldGrid[14][20];
 dll::BUILDING* TownHall = nullptr;
 
-std::vector<dll::BUILDING> vHomes;
-std::vector<dll::BUILDING> vTrees;
-std::vector<dll::BUILDING> vTowers;
-std::vector<dll::BUILDING> vWalls;
-std::vector<dll::BUILDING> vFires;
+std::vector<dll::BUILDING*> vHomes;
+std::vector<dll::BUILDING*> vTrees;
+std::vector<dll::BUILDING*> vTowers;
+std::vector<dll::BUILDING*> vWalls;
+std::vector<dll::BUILDING*> vFires;
 
 /////////////////////////////////////////////////////////
 
@@ -148,6 +155,7 @@ void ReleaseResources()
     GarbageCollect(&txtBrush);
     GarbageCollect(&txtHgltBrush);
     GarbageCollect(&txtInactBrush);
+    GarbageCollect(&FieldBrush);
     GarbageCollect(&iWriteFactory);
     GarbageCollect(&nrmTxt);
     GarbageCollect(&midTxt);
@@ -184,8 +192,25 @@ void InitGame()
     score = 0;
     secs = 0;
     mins = 0;
+    wood = 200;
+    carry_heroe = false;
+    carry_house = false;
+    carry_wall = false;
+    carry_tower = false;
 
     vAxes.clear();
+    
+    if (!vHomes.empty())
+        for (int i = 0; i < vHomes.size(); i++)vHomes[i]->Release();
+    if (!vTrees.empty())
+        for (int i = 0; i < vTrees.size(); i++)vTrees[i]->Release();
+    if (!vTowers.empty())
+        for (int i = 0; i < vTowers.size(); i++)vTowers[i]->Release();
+    if (!vWalls.empty())
+        for (int i = 0; i < vWalls.size(); i++)vWalls[i]->Release();
+    if (!vFires.empty())
+        for (int i = 0; i < vFires.size(); i++)vFires[i]->Release();
+
     vHomes.clear();
     vTrees.clear();
     vTowers.clear();
@@ -203,11 +228,13 @@ void InitGame()
         for (int i = 0; i < vEvils.size(); i++) vEvils[i]->Release();
     vEvils.clear();
     
-    for (int rows = 0; rows < 13; rows++)
+    for (int rows = 0; rows < 14; rows++)
     {
         for (int cols = 0; cols < 20; cols++)
         {
+           
             FieldGrid[rows][cols] = dll::BUILDING::TileFactory(buildings::snow_tile, (float)(cols * 50), (float)(rows * 50 + 50));
+        
         }
     }
 
@@ -283,7 +310,9 @@ void InitGame()
         FieldGrid[12][first_home_col + 1]->type = buildings::soil_tile;
     }
 
-   
+    FieldGrid[13][16]->type = buildings::tower;
+    FieldGrid[13][18]->type = buildings::home;
+    FieldGrid[13][19]->type = buildings::wall;
 }
 
 void GameOver()
@@ -504,6 +533,143 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
         }
         break;
 
+    case WM_LBUTTONDOWN:
+        if (!carry_heroe && !carry_house && !carry_wall && !carry_tower)
+        {
+            if (wood > 0)
+            {
+                int row = HIWORD(lParam) / 50;
+                int col = LOWORD(lParam) / 50;
+
+                if (row == 13 && col == 17)
+                {
+                    if (wood < 25)
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        break;
+                    }
+                    carry_heroe = true;
+                    wood -= 25;
+                    break;
+                }
+                else if (row == 13 && col == 18)
+                {
+                    if (wood < 100)
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        break;
+                    }
+                    wood -= 100;
+                    carry_house = true;
+                    break;
+                }
+                else if (row == 13 && col == 19)
+                {
+                    if (wood < 50)
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        break;
+                    }
+                    carry_wall = true;
+                    wood -= 50;
+                    break;
+                }
+                else if (row == 13 && col == 16)
+                {
+                    if (wood < 80)
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        break;
+                    }
+                    carry_tower = true;
+                    wood -= 80;
+                    break;
+                }
+            }
+            else if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+        }
+        else
+        {
+            int row = HIWORD(lParam) / 50;
+            int col = LOWORD(lParam) / 50;
+
+            if (row == 13 && (carry_heroe || carry_house || carry_tower || carry_wall))
+            {
+                if (carry_heroe)wood += 25;
+                if (carry_house)wood += 100;
+                if (carry_wall)wood += 50;
+                if (carry_tower)wood += 80;
+
+                carry_heroe = false;
+                carry_house = false;
+                carry_tower = false;
+                carry_wall = false;
+                break;
+            }
+
+
+            if (carry_heroe && TownHall)
+            {
+                vHeroes.push_back(dll::CreatureFactory(creatures::hero, TownHall->x, TownHall->y-20.0f));
+                carry_heroe = false;
+            }
+            if (carry_house)
+            {
+                if (row < 13 && col < 20)
+                {
+                    if (FieldGrid[row][col]->type == buildings::soil_tile)
+                    {
+                        vHomes.push_back(dll::BUILDING::TileFactory(buildings::home, FieldGrid[row][col]->x,
+                            FieldGrid[row][col]->y));
+                        carry_house = false;
+                    }
+                    else
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        carry_house = false;
+                        wood += 100;
+                    }
+                }
+            }
+            if (carry_wall)
+            {
+                if (row < 13 && col < 20)
+                {
+                    if (FieldGrid[row][col]->type == buildings::soil_tile)
+                    {
+                        vWalls.push_back(dll::BUILDING::TileFactory(buildings::wall, FieldGrid[row][col]->x,
+                            FieldGrid[row][col]->y));
+                        carry_wall = false;
+                    }
+                    else
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        carry_wall = false;
+                        wood += 50;
+                    }
+                }
+            }
+            if (carry_tower)
+            {
+                if (row < 13 && col < 20)
+                {
+                    if (FieldGrid[row][col]->type == buildings::soil_tile)
+                    {
+                        vTowers.push_back(dll::BUILDING::TileFactory(buildings::tower, FieldGrid[row][col]->x,
+                            FieldGrid[row][col]->y));
+                        carry_tower = false;
+                    }
+                    else
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        carry_tower = false;
+                        wood += 80;
+                    }
+                }
+            }
+        }
+        break;
+
     default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
     }
 
@@ -613,6 +779,13 @@ void CreateResourses()
 
     if (Draw)
         hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::IndianRed), &txtInactBrush);
+    if (hr != S_OK)
+    {
+        ErrorLog(L"Error creating txtInactBrush");
+        ErrExit(eD2D);
+    }
+    if (Draw)
+        hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DimGray), &FieldBrush);
     if (hr != S_OK)
     {
         ErrorLog(L"Error creating txtInactBrush");
@@ -865,26 +1038,113 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
 
 
-        for (int row = 0; row < 13; row++)
+        for (int row = 0; row < 14; row++)
         {
             for (int col = 0; col < 20; col++)
             {
                 switch (FieldGrid[row][col]->type)
                 {
                 case buildings::snow_tile:
-                    Draw->DrawBitmap(bmpSnow, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                    if (row < 13)Draw->DrawBitmap(bmpSnow, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
                         FieldGrid[row][col]->ex, FieldGrid[row][col]->ey));
+                    else Draw->FillRectangle(D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                        FieldGrid[row][col]->ex, FieldGrid[row][col]->ey), FieldBrush);
                     break;
 
                 case buildings::soil_tile:
                     Draw->DrawBitmap(bmpSoil, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
                         FieldGrid[row][col]->ex, FieldGrid[row][col]->ey));
                     break;
+
+                case buildings::wall:
+                    if (row < 13)Draw->DrawBitmap(bmpWall, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                        FieldGrid[row][col]->x + 50.0f, FieldGrid[row][col]->y + 50.0f));
+                    else
+                    {
+                        Draw->FillRectangle(D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                            FieldGrid[row][col]->ex, FieldGrid[row][col]->ey), FieldBrush);
+                        Draw->DrawBitmap(bmpWall, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                            FieldGrid[row][col]->x + 50.0f, FieldGrid[row][col]->y + 35.0f));
+                    }
+                    break;
+
+                case buildings::home:
+                    if (row < 13)Draw->DrawBitmap(bmpHome, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                        FieldGrid[row][col]->x + 50.0f, FieldGrid[row][col]->y + 32.0f));
+                    else
+                    {
+                        Draw->FillRectangle(D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                            FieldGrid[row][col]->ex, FieldGrid[row][col]->ey), FieldBrush);
+                        Draw->DrawBitmap(bmpHome, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                            FieldGrid[row][col]->x + 50.0f, FieldGrid[row][col]->y + 32.0f));
+                    }
+                    break;
+
+                case buildings::tower:
+                    if (row < 13)Draw->DrawBitmap(bmpTower, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                        FieldGrid[row][col]->x + 25.0f, FieldGrid[row][col]->y + 50.0f));
+                    else
+                    {
+                        Draw->FillRectangle(D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                            FieldGrid[row][col]->ex, FieldGrid[row][col]->ey), FieldBrush);
+                        Draw->DrawBitmap(bmpTower, D2D1::RectF(FieldGrid[row][col]->x, FieldGrid[row][col]->y,
+                            FieldGrid[row][col]->x + 25.0f, FieldGrid[row][col]->y + 50.0f));
+                    }
+                    break;
                 }
             }
         }
         if (TownHall)Draw->DrawBitmap(bmpTownHall, D2D1::RectF(TownHall->x, TownHall->y, TownHall->ex, TownHall->ey));
+        Draw->DrawBitmap(bmpHero, D2D1::RectF(FieldGrid[13][17]->x, FieldGrid[13][17]->y, 
+            FieldGrid[13][17]->x + 27.0f, FieldGrid[13][17]->y + 40.0f));
 
+        if (carry_heroe)Draw->DrawBitmap(bmpHero, D2D1::RectF((float)(cur_pos.x), (float)(cur_pos.y), 
+            (float)(cur_pos.x) + 27.0f, (float)(cur_pos.y) + 40.0f));
+        if (carry_house)Draw->DrawBitmap(bmpHome, D2D1::RectF((float)(cur_pos.x), (float)(cur_pos.y), 
+            (float)(cur_pos.x) + 40.0f, (float)(cur_pos.y) + 40.0f));
+        if (carry_wall)Draw->DrawBitmap(bmpWall, D2D1::RectF((float)(cur_pos.x), (float)(cur_pos.y),
+            (float)(cur_pos.x) + 40.0f, (float)(cur_pos.y) + 40.0f));
+        if (carry_tower)Draw->DrawBitmap(bmpTower, D2D1::RectF((float)(cur_pos.x), (float)(cur_pos.y),
+            (float)(cur_pos.x) + 25.0f, (float)(cur_pos.y) + 50.0f));
+        
+        ////////////////////////////////////////////
+
+        if (!vHomes.empty())
+        {
+            for (std::vector<dll::BUILDING*>::iterator it = vHomes.begin(); it < vHomes.end(); ++it)
+            {
+                Draw->DrawBitmap(bmpHome, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+            }
+        }
+        if (!vTowers.empty())
+        {
+            for (std::vector<dll::BUILDING*>::iterator it = vTowers.begin(); it < vTowers.end(); ++it)
+            {
+                Draw->DrawBitmap(bmpTower, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+            }
+        }
+        if (!vWalls.empty())
+        {
+            for (std::vector<dll::BUILDING*>::iterator it = vWalls.begin(); it < vWalls.end(); ++it)
+            {
+                Draw->DrawBitmap(bmpWall, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+            }
+        }
+
+        if (!vHeroes.empty())
+        {
+            for (std::vector<dll::Creature>::iterator it = vHeroes.begin(); it < vHeroes.end(); ++it)
+                Draw->DrawBitmap(bmpHero, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+        }
+
+
+        ////////////////////////////////////
+        
+        if (!vHeroes.empty())
+        {
+            for (int i = 0; i < vHeroes.size(); i++)
+                Draw->DrawBitmap(bmpHero, D2D1::RectF(vHeroes[i]->x, vHeroes[i]->y, vHeroes[i]->ex, vHeroes[i]->ey));
+        }
 
 
 

@@ -220,7 +220,7 @@ namespace dll
 					break;
 
 				case buildings::home:
-					NewDims(100.0f, 64.0f);
+					NewDims(50.0f, 32.0f);
 					lifes = 200;
 					break;
 
@@ -235,7 +235,7 @@ namespace dll
 					break;
 
 				case buildings::wall:
-					NewDims(100.0f, 70.0f);
+					NewDims(50.0f, 50.0f);
 					lifes = 100;
 					break;
 
