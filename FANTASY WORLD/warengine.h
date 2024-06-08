@@ -137,17 +137,17 @@ namespace dll
 			int shoot_delay = 25;
 			int chop_delay = 25;
 			PATH Path;
-			AI_INPUT AIDataIN;
-
+			
 		public:
 			int lifes = 0;
 			creatures type = creatures::hero;
 			dirs dir = dirs::right;
 			AI_OUTPUT AIDataOut;
-			
+			AI_INPUT AIDataIN;
+
 			PERSON(creatures who, float _x, float _y) :OBJECT(_x, _y)
 			{
-				x += _x;
+				x = _x;
 				y = _y;
 				type = who;
 

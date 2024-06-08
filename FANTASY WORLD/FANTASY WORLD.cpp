@@ -75,6 +75,7 @@ bool carry_house = false;
 bool carry_wall = false;
 bool carry_heroe = false;
 bool carry_tower = false;
+bool base_under_attack = false;
 
 int score = 0;
 int wood = 100;
@@ -197,6 +198,7 @@ void InitGame()
     carry_house = false;
     carry_wall = false;
     carry_tower = false;
+    base_under_attack = false;
 
     vAxes.clear();
     
@@ -313,6 +315,20 @@ void InitGame()
     FieldGrid[13][16]->type = buildings::tower;
     FieldGrid[13][18]->type = buildings::home;
     FieldGrid[13][19]->type = buildings::wall;
+
+    int tree_counter = 0;
+
+    while (tree_counter < 9)
+    {
+        int col = rand() % 19;
+        int row = tree_counter;
+
+        if (FieldGrid[row][col]->type == buildings::snow_tile)
+        {
+            vTrees.push_back(dll::BUILDING::TileFactory(buildings::tree, FieldGrid[row][col]->x, FieldGrid[row][col]->y));
+            tree_counter++;
+        }
+    }
 }
 
 void GameOver()
@@ -607,10 +623,10 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                 break;
             }
 
-
             if (carry_heroe && TownHall)
             {
-                vHeroes.push_back(dll::CreatureFactory(creatures::hero, TownHall->x, TownHall->y-20.0f));
+                vHeroes.push_back(dll::CreatureFactory(creatures::hero, TownHall->x + (float)(rand() % 50),
+                    (float)(TownHall->y - rand() % 20)));
                 carry_heroe = false;
             }
             if (carry_house)
@@ -622,6 +638,26 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                         vHomes.push_back(dll::BUILDING::TileFactory(buildings::home, FieldGrid[row][col]->x,
                             FieldGrid[row][col]->y));
                         carry_house = false;
+
+                        bool up_ok = (row - 1 >= 0);
+                        bool down_ok = (row + 1 <= 12);
+                        bool left_ok = (col - 1 >= 0);
+                        bool right_ok = (col + 1 <= 19);
+
+                        if (up_ok)
+                        {
+                            FieldGrid[row - 1][col]->type = buildings::soil_tile;
+                            if (left_ok)FieldGrid[row - 1][col - 1]->type = buildings::soil_tile;
+                            if (right_ok)FieldGrid[row - 1][col + 1]->type = buildings::soil_tile;
+                        }
+                        if (down_ok)
+                        {
+                            FieldGrid[row + 1][col]->type = buildings::soil_tile;
+                            if (left_ok)FieldGrid[row + 1][col - 1]->type = buildings::soil_tile;
+                            if (right_ok)FieldGrid[row + 1][col + 1]->type = buildings::soil_tile;
+                        }
+                        if (left_ok)FieldGrid[row][col - 1]->type = buildings::soil_tile;
+                        if (right_ok)FieldGrid[row][col + 1]->type = buildings::soil_tile;
                     }
                     else
                     {
@@ -1003,9 +1039,107 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         ///////////////////////////////////////////////////
 
-      
+        // PEOPLE *****************************************
 
+        if (!vHeroes.empty())
+        {
+            for (std::vector<dll::Creature>::iterator it = vHeroes.begin(); it < vHeroes.end(); it++)
+            {
+                AI_INPUT now;
+                
+                now.base_under_attack = base_under_attack;
+                now.current_action = (*it)->AIDataIN.current_action;
+                
+                now.near_enemy_lifes = (*it)->AIDataIN.near_enemy_lifes;
+                now.near_enemy_x = (*it)->AIDataIN.near_enemy_x;
+                now.near_enemy_y = (*it)->AIDataIN.near_enemy_y;
 
+                now.obst_down = (*it)->AIDataIN.obst_down;
+                now.obst_up = (*it)->AIDataIN.obst_up;
+                now.obst_left = (*it)->AIDataIN.obst_left;
+                now.obst_right = (*it)->AIDataIN.obst_right;
+
+                if (vEvils.empty())
+                {
+                    now.near_enemy_lifes = 0;
+                    now.near_enemy_x = 0;
+                    now.near_enemy_y = 0;
+                }
+                else
+                {
+                
+                    for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
+                    {
+                        if ((*it)->AIDataIN.current_action != actions::shoot)
+                        {
+                            if ((float)(abs((*it)->x - (*evil)->x)) < (float)(abs((*it)->x - now.near_enemy_x)) &&
+                                (float)(abs((*it)->y - (*evil)->y)) < (float)(abs((*it)->y - now.near_enemy_y)))
+                            {
+                                now.near_enemy_lifes = (*evil)->lifes;
+                                now.near_enemy_x = (*evil)->x;
+                                now.near_enemy_y = (*evil)->y;
+                            }
+                        }
+                    }
+                }
+                if (vTrees.empty())
+                {
+                    now.near_tree_x = 0;
+                    now.near_tree_y = 0;
+                }
+                else
+                {
+                    if (!now.tree_in_range)
+                    {
+                        now.near_tree_x = (*it)->AIDataIN.near_tree_x;
+                        now.near_tree_y = (*it)->AIDataIN.near_tree_y;
+
+                        for (std::vector<dll::BUILDING*>::iterator tree = vTrees.begin(); tree < vTrees.end(); ++tree)
+                        {
+                            if ((float)(abs((*it)->x - (*tree)->x)) < (float)(abs((*it)->x - now.near_enemy_x)) 
+                                && (float)(abs((*it)->y - (*tree)->y)) < (float)(abs((*it)->y - now.near_enemy_y)))
+                            {
+                                now.near_tree_x = (*tree)->x;
+                                now.near_tree_y = (*tree)->y;
+                            }
+                        }
+                    }
+                    if ((float)(abs((*it)->x - now.near_tree_x) < 10.0f) && (float)(abs((*it)->y - now.near_tree_y) < 10.0f))
+                        now.tree_in_range = true;
+                    else now.tree_in_range = false;
+                }
+
+                (*it)->AIManager(now);
+            }
+        }
+
+        if (!vHeroes.empty())
+        {
+            for (std::vector<dll::Creature>::iterator it = vHeroes.begin(); it < vHeroes.end(); it++)
+            {
+                switch ((*it)->AIDataOut.new_action)
+                {
+                case actions::chop:
+                    if ((*it)->Chop())wood += 10;
+                    break;
+
+                case actions::move:
+                    if ((*it)->Move(game_speed/10, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
+                    {
+
+                    }
+                    break;
+
+                case actions::shelter:
+                    if ((*it)->Move(game_speed, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
+                    {
+
+                    }
+                    break;
+                    
+                }
+            }
+        }
 
 
 
@@ -1095,8 +1229,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
         if (TownHall)Draw->DrawBitmap(bmpTownHall, D2D1::RectF(TownHall->x, TownHall->y, TownHall->ex, TownHall->ey));
-        Draw->DrawBitmap(bmpHero, D2D1::RectF(FieldGrid[13][17]->x, FieldGrid[13][17]->y, 
-            FieldGrid[13][17]->x + 27.0f, FieldGrid[13][17]->y + 40.0f));
+        Draw->DrawBitmap(bmpHero, D2D1::RectF(FieldGrid[13][17]->x +10.0f, FieldGrid[13][17]->y, 
+            FieldGrid[13][17]->x + 37.0f, FieldGrid[13][17]->y + 40.0f));
 
         if (carry_heroe)Draw->DrawBitmap(bmpHero, D2D1::RectF((float)(cur_pos.x), (float)(cur_pos.y), 
             (float)(cur_pos.x) + 27.0f, (float)(cur_pos.y) + 40.0f));
@@ -1128,6 +1262,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             for (std::vector<dll::BUILDING*>::iterator it = vWalls.begin(); it < vWalls.end(); ++it)
             {
                 Draw->DrawBitmap(bmpWall, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+            }
+        }
+        if (!vTrees.empty())
+        {
+            for (std::vector<dll::BUILDING*>::iterator it = vTrees.begin(); it < vTrees.end(); ++it)
+            {
+                Draw->DrawBitmap(bmpTree, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
             }
         }
 
