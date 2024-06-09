@@ -317,7 +317,7 @@ void InitGame()
     FieldGrid[13][19]->type = buildings::wall;
 
     int tree_counter = 0;
-
+   
     while (tree_counter < 9)
     {
         int col = rand() % 19;
@@ -1050,6 +1050,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 now.base_under_attack = base_under_attack;
                 now.current_action = (*it)->AIDataIN.current_action;
                 
+                now.tree_in_range = (*it)->AIDataIN.tree_in_range;
+                now.near_tree_x = (*it)->AIDataIN.near_tree_x;
+                now.near_tree_y = (*it)->AIDataIN.near_tree_y;
+                
                 now.near_enemy_lifes = (*it)->AIDataIN.near_enemy_lifes;
                 now.near_enemy_x = (*it)->AIDataIN.near_enemy_x;
                 now.near_enemy_y = (*it)->AIDataIN.near_enemy_y;
@@ -1058,6 +1062,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 now.obst_up = (*it)->AIDataIN.obst_up;
                 now.obst_left = (*it)->AIDataIN.obst_left;
                 now.obst_right = (*it)->AIDataIN.obst_right;
+                
+                now.shelter.left = static_cast<LONG>(TownHall->x);
+                now.shelter.right = static_cast<LONG>(TownHall->ex);
+                now.shelter.top = static_cast<LONG>(TownHall->y);
+                now.shelter.bottom = static_cast<LONG>(TownHall->ey);
 
                 if (vEvils.empty())
                 {
@@ -1067,12 +1076,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
                 else
                 {
-                
                     for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
                     {
                         if ((*it)->AIDataIN.current_action != actions::shoot)
                         {
-                            if ((float)(abs((*it)->x - (*evil)->x)) < (float)(abs((*it)->x - now.near_enemy_x)) &&
+                            if ((float)(abs((*it)->x - (*evil)->x)) < (float)(abs((*it)->x - now.near_enemy_x)) ||
                                 (float)(abs((*it)->y - (*evil)->y)) < (float)(abs((*it)->y - now.near_enemy_y)))
                             {
                                 now.near_enemy_lifes = (*evil)->lifes;
@@ -1091,25 +1099,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 {
                     if (!now.tree_in_range)
                     {
-                        now.near_tree_x = (*it)->AIDataIN.near_tree_x;
-                        now.near_tree_y = (*it)->AIDataIN.near_tree_y;
-
                         for (std::vector<dll::BUILDING*>::iterator tree = vTrees.begin(); tree < vTrees.end(); ++tree)
                         {
                             if ((float)(abs((*it)->x - (*tree)->x)) < (float)(abs((*it)->x - now.near_enemy_x)) 
-                                && (float)(abs((*it)->y - (*tree)->y)) < (float)(abs((*it)->y - now.near_enemy_y)))
+                                || (float)(abs((*it)->y - (*tree)->y)) < (float)(abs((*it)->y - now.near_enemy_y)))
                             {
+                                (*it)->AIDataIN.near_tree_x = (*tree)->x;
+                                (*it)->AIDataIN.near_tree_y = (*tree)->y;
+
                                 now.near_tree_x = (*tree)->x;
                                 now.near_tree_y = (*tree)->y;
+                                if ((float)(abs((*it)->x - now.near_tree_x) < 10.0f) 
+                                    || (float)(abs((*it)->y - now.near_tree_y) < 10.0f))
+                                {
+                                    (*it)->AIDataIN.tree_in_range = true;
+                                    now.tree_in_range = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    (*it)->AIDataIN.tree_in_range = false;
+                                    now.tree_in_range = false;
+                                }
                             }
                         }
                     }
-                    if ((float)(abs((*it)->x - now.near_tree_x) < 10.0f) && (float)(abs((*it)->y - now.near_tree_y) < 10.0f))
-                        now.tree_in_range = true;
-                    else now.tree_in_range = false;
                 }
 
                 (*it)->AIManager(now);
+                (*it)->AIDataIN.current_action = now.current_action;
             }
         }
 
@@ -1124,16 +1142,53 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     break;
 
                 case actions::move:
-                    if ((*it)->Move(game_speed/10, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
+                    if ((*it)->Move(game_speed / 10, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
                     {
+                        switch ((*it)->dir)
+                        {
+                        case dirs::up:
+                            (*it)->AIDataIN.obst_up = true;
+                            break;
 
+                        case dirs::u_r:
+                            (*it)->AIDataIN.obst_up = true;
+                            (*it)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::u_l:
+                            (*it)->AIDataIN.obst_up = true;
+                            (*it)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::down:
+                            (*it)->AIDataIN.obst_down = true;
+                            break;
+
+                        case dirs::d_r:
+                            (*it)->AIDataIN.obst_down = true;
+                            (*it)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::d_l:
+                            (*it)->AIDataIN.obst_down = true;
+                            (*it)->AIDataIN.obst_left = true;
+                            break;
+                       
+                        case dirs::left:
+                            (*it)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::right:
+                            (*it)->AIDataIN.obst_right = true;
+                            break;
+                        }
                     }
                     break;
 
                 case actions::shelter:
                     if ((*it)->Move(game_speed, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
                     {
-
+                        
                     }
                     break;
                     
