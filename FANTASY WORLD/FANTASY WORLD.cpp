@@ -316,8 +316,7 @@ void InitGame()
     FieldGrid[13][18]->type = buildings::home;
     FieldGrid[13][19]->type = buildings::wall;
 
-    int tree_counter = 0;
-   
+    int tree_counter = 0; 
     while (tree_counter < 9)
     {
         int col = rand() % 19;
@@ -1050,7 +1049,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 now.base_under_attack = base_under_attack;
                 now.current_action = (*it)->AIDataIN.current_action;
                 
-                now.tree_in_range = (*it)->AIDataIN.tree_in_range;
+                now.tree_in_range =  (*it)->AIDataIN.tree_in_range;
                 now.near_tree_x = (*it)->AIDataIN.near_tree_x;
                 now.near_tree_y = (*it)->AIDataIN.near_tree_y;
                 
@@ -1068,12 +1067,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 now.shelter.top = static_cast<LONG>(TownHall->y);
                 now.shelter.bottom = static_cast<LONG>(TownHall->ey);
 
-                if (vEvils.empty())
-                {
-                    now.near_enemy_lifes = 0;
-                    now.near_enemy_x = 0;
-                    now.near_enemy_y = 0;
-                }
+                if (vEvils.empty()) now.exist_enemy = false;
                 else
                 {
                     for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
@@ -1090,11 +1084,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         }
                     }
                 }
-                if (vTrees.empty())
-                {
-                    now.near_tree_x = 0;
-                    now.near_tree_y = 0;
-                }
+                if (vTrees.empty()) now.exist_tree = false;
                 else
                 {
                     if (!now.tree_in_range)
@@ -1104,30 +1094,36 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                             if ((float)(abs((*it)->x - (*tree)->x)) < (float)(abs((*it)->x - now.near_enemy_x)) 
                                 || (float)(abs((*it)->y - (*tree)->y)) < (float)(abs((*it)->y - now.near_enemy_y)))
                             {
-                                (*it)->AIDataIN.near_tree_x = (*tree)->x;
-                                (*it)->AIDataIN.near_tree_y = (*tree)->y;
-
                                 now.near_tree_x = (*tree)->x;
                                 now.near_tree_y = (*tree)->y;
                                 if ((float)(abs((*it)->x - now.near_tree_x) < 10.0f) 
-                                    || (float)(abs((*it)->y - now.near_tree_y) < 10.0f))
+                                    && (float)(abs((*it)->y - now.near_tree_y) < 10.0f))
                                 {
-                                    (*it)->AIDataIN.tree_in_range = true;
                                     now.tree_in_range = true;
-                                    break;
+                                    now.chopped_tree_number = (int)(std::distance(vTrees.begin(), tree));
                                 }
                                 else
                                 {
-                                    (*it)->AIDataIN.tree_in_range = false;
                                     now.tree_in_range = false;
+                                    now.chopped_tree_number = -1;
                                 }
                             }
                         }
                     }
+                    else now.chopped_tree_number = (*it)->AIDataIN.chopped_tree_number;
+                    
                 }
 
                 (*it)->AIManager(now);
-                (*it)->AIDataIN.current_action = now.current_action;
+                (*it)->AIDataIN.current_action = (*it)->AIDataOut.new_action;
+                 
+                if ((*it)->AIDataIN.obst_left || (*it)->AIDataIN.obst_right || (*it)->AIDataIN.obst_up || (*it)->AIDataIN.obst_down)
+                {
+                    (*it)->AIDataIN.obst_left = false;
+                    (*it)->AIDataIN.obst_right = false;
+                    (*it)->AIDataIN.obst_up = false;
+                    (*it)->AIDataIN.obst_down = false;
+                }
             }
         }
 
@@ -1135,10 +1131,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         {
             for (std::vector<dll::Creature>::iterator it = vHeroes.begin(); it < vHeroes.end(); it++)
             {
-                switch ((*it)->AIDataOut.new_action)
+                
+                switch ((*it)->AIDataIN.current_action)
                 {
                 case actions::chop:
-                    if ((*it)->Chop())wood += 10;
+                    if ((*it)->Chop())
+                    {
+                        wood += 10;
+                        vTrees[(*it)->AIDataIN.chopped_tree_number]->lifes -= 5;
+                        
+                        if (vTrees[(*it)->AIDataIN.chopped_tree_number]->lifes < 0)
+                        {
+                            vTrees[(*it)->AIDataIN.chopped_tree_number]->Release();
+                            vTrees.erase(vTrees.begin() + (*it)->AIDataIN.chopped_tree_number);
+                            if (vTrees.empty())(*it)->AIDataIN.exist_tree = false;
+                            if (!vHeroes.empty())
+                                for (int i = 0; i < vHeroes.size(); i++)
+                                    vHeroes[i]->AIDataIN.tree_in_range = false;
+                        }
+                    }
                     break;
 
                 case actions::move:
@@ -1191,13 +1202,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         
                     }
                     break;
-                    
                 }
+                
             }
         }
 
-
-
+        
+        
 
 
 

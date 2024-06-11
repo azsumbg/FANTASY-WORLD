@@ -45,6 +45,7 @@ struct WARAPI AI_INPUT
 
 	float near_tree_x = 0;
 	float near_tree_y = 0;
+	int chopped_tree_number = -1;
 
 	bool obst_left = false;
 	bool obst_right = false;
@@ -53,6 +54,10 @@ struct WARAPI AI_INPUT
 
 	bool tree_in_range = false;
 	bool base_under_attack = false;
+
+	bool exist_tree = true;
+	bool exist_enemy = true;
+
 };
 
 struct WARAPI AI_OUTPUT
