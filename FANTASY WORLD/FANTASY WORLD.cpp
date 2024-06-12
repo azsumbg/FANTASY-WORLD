@@ -1117,7 +1117,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 (*it)->AIManager(now);
                 (*it)->AIDataIN.current_action = (*it)->AIDataOut.new_action;
                  
-                if ((*it)->AIDataIN.obst_left || (*it)->AIDataIN.obst_right || (*it)->AIDataIN.obst_up || (*it)->AIDataIN.obst_down)
+                if ((*it)->AIDataIN.obst_left || (*it)->AIDataIN.obst_right || (*it)->AIDataIN.obst_up 
+                    || (*it)->AIDataIN.obst_down)
                 {
                     (*it)->AIDataIN.obst_left = false;
                     (*it)->AIDataIN.obst_right = false;
@@ -1208,11 +1209,168 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
 
         
-        
+        //EVILS
 
+        if (vEvils.size() <= 3 + game_speed && rand() % 500 == 66)
+            vEvils.push_back(dll::CreatureFactory(static_cast<creatures>(rand() % 4), (float)(rand() % 1000), 0));
 
+        if (!vEvils.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                if (!vHeroes.empty())
+                {
+                    (*evil)->AIDataIN.exist_enemy = true;
+                    (*evil)->AIDataIN.near_enemy_x = (*vHeroes.begin())->x;
+                    (*evil)->AIDataIN.near_enemy_y = (*vHeroes.begin())->y;
+                    (*evil)->AIDataIN.near_enemy_lifes = (*vHeroes.begin())->lifes;
 
+                    for (std::vector<dll::Creature>::iterator hero = std::next(vHeroes.begin()); hero < vHeroes.end(); hero++)
+                    {
+                        if (abs((*evil)->x - (*hero)->x) < abs((*evil)->AIDataIN.near_enemy_x ||
+                            abs((*evil)->y - (*hero)->y) < abs((*evil)->AIDataIN.near_enemy_y)))
+                        {
+                            (*evil)->AIDataIN.near_enemy_x = (*hero)->x;
+                            (*evil)->AIDataIN.near_enemy_y = (*hero)->y;
+                            (*evil)->AIDataIN.near_enemy_lifes = (*hero)->lifes;
+                        }
+                
+                    }
+                }
+                else (*evil)->AIDataIN.exist_enemy = false;
 
+                if (TownHall)
+                {
+                    (*evil)->AIDataIN.shelter.left = (LONG)(TownHall->x);
+                    (*evil)->AIDataIN.shelter.right = (LONG)(TownHall->ex);
+                    (*evil)->AIDataIN.shelter.top = (LONG)(TownHall->y);
+                    (*evil)->AIDataIN.shelter.bottom = (LONG)(TownHall->ey);
+                }
+
+                (*evil)->AIManager((*evil)->AIDataIN);
+                (*evil)->AIDataIN.current_action = (*evil)->AIDataOut.new_action;
+
+                if ((*evil)->AIDataIN.obst_left || (*evil)->AIDataIN.obst_right || (*evil)->AIDataIN.obst_up
+                    || (*evil)->AIDataIN.obst_down)
+                {
+                    (*evil)->AIDataIN.obst_left = false;
+                    (*evil)->AIDataIN.obst_right = false;
+                    (*evil)->AIDataIN.obst_up = false;
+                    (*evil)->AIDataIN.obst_down = false;
+                }
+            }
+        }
+
+        if (!vEvils.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                switch ((*evil)->AIDataOut.new_action)
+                {
+                    case actions::move:
+                        if ((*evil)->Move(game_speed / 10, (*evil)->AIDataOut.new_x, (*evil)->AIDataOut.new_y) == DLL_FAIL)
+                        {
+                            switch ((*evil)->dir)
+                            {
+                            case dirs::up:
+                                (*evil)->AIDataIN.obst_up = true;
+                                break;
+
+                            case dirs::u_r:
+                                (*evil)->AIDataIN.obst_up = true;
+                                (*evil)->AIDataIN.obst_right = true;
+                                break;
+
+                            case dirs::u_l:
+                                (*evil)->AIDataIN.obst_up = true;
+                                (*evil)->AIDataIN.obst_left = true;
+                                break;
+
+                            case dirs::down:
+                                (*evil)->AIDataIN.obst_down = true;
+                                break;
+
+                            case dirs::d_r:
+                                (*evil)->AIDataIN.obst_down = true;
+                                (*evil)->AIDataIN.obst_right = true;
+                                break;
+
+                            case dirs::d_l:
+                                (*evil)->AIDataIN.obst_down = true;
+                                (*evil)->AIDataIN.obst_left = true;
+                                break;
+
+                            case dirs::left:
+                                (*evil)->AIDataIN.obst_left = true;
+                                break;
+
+                            case dirs::right:
+                                (*evil)->AIDataIN.obst_right = true;
+                                break;
+                            }
+                        }
+                        break;
+
+                    case actions::shoot:
+
+                        break;
+                }
+            }
+        }
+
+        if (!vEvils.empty() && !vTrees.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<dll::BUILDING*>::iterator tree = vTrees.begin(); tree < vTrees.end(); tree++)
+                {
+                    if (!((*evil)->x >= (*tree)->ex || (*evil)->ex <= (*tree)->x ||
+                        (*evil)->y >= (*tree)->ey || (*evil)->ey <= (*tree)->y))
+                    {
+                        switch ((*evil)->dir)
+                        {
+                        case dirs::up:
+                            (*evil)->AIDataIN.obst_up = true;
+                            break;
+
+                        case dirs::u_r:
+                            (*evil)->AIDataIN.obst_up = true;
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::u_l:
+                            (*evil)->AIDataIN.obst_up = true;
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::down:
+                            (*evil)->AIDataIN.obst_down = true;
+                            break;
+
+                        case dirs::d_r:
+                            (*evil)->AIDataIN.obst_down = true;
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::d_l:
+                            (*evil)->AIDataIN.obst_down = true;
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::left:
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::right:
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //BATTLES *****************************************
 
 
 
@@ -1344,15 +1502,31 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 Draw->DrawBitmap(bmpHero, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
         }
 
+        if(!vEvils.empty())
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                switch ((*evil)->type)
+                {
+                case creatures::evil1:
+                    Draw->DrawBitmap(bmpEvil1, D2D1::RectF((*evil)->x, (*evil)->y, (*evil)->ex, (*evil)->ey));
+                    break;
 
-        ////////////////////////////////////
+                case creatures::evil2:
+                    Draw->DrawBitmap(bmpEvil2, D2D1::RectF((*evil)->x, (*evil)->y, (*evil)->ex, (*evil)->ey));
+                    break;
+
+                case creatures::evil3:
+                    Draw->DrawBitmap(bmpEvil3, D2D1::RectF((*evil)->x, (*evil)->y, (*evil)->ex, (*evil)->ey));
+                    break;
+
+                case creatures::bear:
+                    Draw->DrawBitmap(bmpBear, D2D1::RectF((*evil)->x, (*evil)->y, (*evil)->ex, (*evil)->ey));
+                    break;
+                }
+            }
+
+
         
-        if (!vHeroes.empty())
-        {
-            for (int i = 0; i < vHeroes.size(); i++)
-                Draw->DrawBitmap(bmpHero, D2D1::RectF(vHeroes[i]->x, vHeroes[i]->y, vHeroes[i]->ex, vHeroes[i]->ey));
-        }
-
 
 
         //////////////////////////////////////////////////////
