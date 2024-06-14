@@ -42,6 +42,7 @@ struct WARAPI AI_INPUT
 	float near_enemy_x = 0;
 	float near_enemy_y = 0;
 	int near_enemy_lifes = 0;
+	int enemy_engaged_number = -1;
 
 	float near_tree_x = 0;
 	float near_tree_y = 0;
@@ -147,6 +148,7 @@ namespace dll
 			int lifes = 0;
 			creatures type = creatures::hero;
 			dirs dir = dirs::right;
+			int strenght = 0;
 			AI_OUTPUT AIDataOut;
 			AI_INPUT AIDataIN;
 
@@ -161,30 +163,35 @@ namespace dll
 				case creatures::hero:
 					NewDims(27.0f, 40.0f);
 					lifes = 50;
+					strenght = 10;
 					break;
 
 				case creatures::evil1:
 					NewDims(80.0f, 60.0f);
 					lifes = 100;
 					speed = 0.8f;
+					strenght = 15;
 					break;
 
 				case creatures::evil2:
 					NewDims(80.0f, 80.0f);
 					lifes = 120;
 					speed = 0.6f;
+					strenght = 18;
 					break;
 
 				case creatures::evil3:
 					NewDims(70.0f, 78.0f);
 					lifes = 110;
 					speed = 0.9f;
+					strenght = 20;
 					break;
 
 				case creatures::bear:
 					NewDims(100.0f, 100.0f);
 					lifes = 150;
 					speed = 0.5f;
+					strenght = 25;
 					break;
 
 				}
@@ -226,7 +233,7 @@ namespace dll
 
 				case buildings::home:
 					NewDims(50.0f, 32.0f);
-					lifes = 200;
+					lifes = 2000;
 					break;
 
 				case buildings::tower:
@@ -236,17 +243,17 @@ namespace dll
 
 				case buildings::townhall:
 					NewDims(150.0f, 140.0f);
-					lifes = 500;
+					lifes = 50000;
 					break;
 
 				case buildings::wall:
 					NewDims(50.0f, 50.0f);
-					lifes = 100;
+					lifes = 5000;
 					break;
 
 				case buildings::tree:
 					NewDims(47.0f, 50.0f);
-					lifes = 100;
+					lifes = 10000;
 					break;
 				}
 			}

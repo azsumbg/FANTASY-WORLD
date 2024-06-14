@@ -93,6 +93,10 @@ ID2D1SolidColorBrush* txtInactBrush = nullptr;
 ID2D1SolidColorBrush* txtHgltBrush = nullptr;
 ID2D1SolidColorBrush* FieldBrush = nullptr;
 
+ID2D1SolidColorBrush* LifeBrush = nullptr;
+ID2D1SolidColorBrush* HitBrush = nullptr;
+ID2D1SolidColorBrush* CritBrush = nullptr;
+
 IDWriteFactory* iWriteFactory = nullptr;
 IDWriteTextFormat* nrmTxt = nullptr;
 IDWriteTextFormat* midTxt = nullptr;
@@ -157,6 +161,10 @@ void ReleaseResources()
     GarbageCollect(&txtHgltBrush);
     GarbageCollect(&txtInactBrush);
     GarbageCollect(&FieldBrush);
+    GarbageCollect(&LifeBrush);
+    GarbageCollect(&HitBrush);
+    GarbageCollect(&CritBrush);
+
     GarbageCollect(&iWriteFactory);
     GarbageCollect(&nrmTxt);
     GarbageCollect(&midTxt);
@@ -805,7 +813,7 @@ void CreateResourses()
     }
     
     if (Draw)
-        hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Yellow), &txtHgltBrush);
+        hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::YellowGreen), &txtHgltBrush);
     if (hr != S_OK)
     {
         ErrorLog(L"Error creating txtHgltBrush");
@@ -824,6 +832,30 @@ void CreateResourses()
     if (hr != S_OK)
     {
         ErrorLog(L"Error creating txtInactBrush");
+        ErrExit(eD2D);
+    }
+
+    if (Draw)
+        hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Green), &LifeBrush);
+    if (hr != S_OK)
+    {
+        ErrorLog(L"Error creating LifeBrush");
+        ErrExit(eD2D);
+    }
+
+    if (Draw)
+        hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Orange), &HitBrush);
+    if (hr != S_OK)
+    {
+        ErrorLog(L"Error creating HitBrush");
+        ErrExit(eD2D);
+    }
+
+    if (Draw)
+        hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &CritBrush);
+    if (hr != S_OK)
+    {
+        ErrorLog(L"Error creating CritBrush");
         ErrExit(eD2D);
     }
 
@@ -1154,7 +1186,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     break;
 
                 case actions::move:
-                    if ((*it)->Move(game_speed / 10, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
+                    if ((*it)->Move(game_speed, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
                     {
                         switch ((*it)->dir)
                         {
@@ -1207,8 +1239,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 
             }
         }
-
-        
+ 
         //EVILS
 
         if (vEvils.size() <= 3 + game_speed && rand() % 500 == 66)
@@ -1218,6 +1249,48 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         {
             for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
             {
+                if (!vWalls.empty())
+                {
+                    (*evil)->AIDataIN.exist_enemy = true;
+                    if (!vHeroes.empty())(*evil)->AIDataIN.near_enemy_x = (*vHeroes.begin())->x;
+                    if (!vHeroes.empty())(*evil)->AIDataIN.near_enemy_y = (*vHeroes.begin())->y;
+                    if (!vHeroes.empty())(*evil)->AIDataIN.near_enemy_lifes = (*vHeroes.begin())->lifes;
+
+                    for (std::vector<dll::BUILDING*>::iterator hero = std::next(vWalls.begin()); hero < vWalls.end(); hero++)
+                    {
+                        if (abs((*evil)->x - (*hero)->x) < abs((*evil)->AIDataIN.near_enemy_x ||
+                            abs((*evil)->y - (*hero)->y) < abs((*evil)->AIDataIN.near_enemy_y)))
+                        {
+                            (*evil)->AIDataIN.near_enemy_x = (*hero)->x;
+                            (*evil)->AIDataIN.near_enemy_y = (*hero)->y;
+                            (*evil)->AIDataIN.near_enemy_lifes = (*hero)->lifes;
+                        }
+
+                    }
+                }
+                else (*evil)->AIDataIN.exist_enemy = false;
+
+                if (!vHomes.empty())
+                {
+                    (*evil)->AIDataIN.exist_enemy = true;
+                    if (!vHeroes.empty())(*evil)->AIDataIN.near_enemy_x = (*vHeroes.begin())->x;
+                    if (!vHeroes.empty())(*evil)->AIDataIN.near_enemy_y = (*vHeroes.begin())->y;
+                    if (!vHeroes.empty())(*evil)->AIDataIN.near_enemy_lifes = (*vHeroes.begin())->lifes;
+
+                    for (std::vector<dll::BUILDING*>::iterator hero = std::next(vHomes.begin()); hero < vHomes.end(); hero++)
+                    {
+                        if (abs((*evil)->x - (*hero)->x) < abs((*evil)->AIDataIN.near_enemy_x ||
+                            abs((*evil)->y - (*hero)->y) < abs((*evil)->AIDataIN.near_enemy_y)))
+                        {
+                            (*evil)->AIDataIN.near_enemy_x = (*hero)->x;
+                            (*evil)->AIDataIN.near_enemy_y = (*hero)->y;
+                            (*evil)->AIDataIN.near_enemy_lifes = (*hero)->lifes;
+                        }
+
+                    }
+                }
+                else (*evil)->AIDataIN.exist_enemy = false;
+                
                 if (!vHeroes.empty())
                 {
                     (*evil)->AIDataIN.exist_enemy = true;
@@ -1268,7 +1341,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 switch ((*evil)->AIDataOut.new_action)
                 {
                     case actions::move:
-                        if ((*evil)->Move(game_speed / 10, (*evil)->AIDataOut.new_x, (*evil)->AIDataOut.new_y) == DLL_FAIL)
+                        if ((*evil)->Move(game_speed, (*evil)->AIDataOut.new_x, (*evil)->AIDataOut.new_y) == DLL_FAIL)
                         {
                             switch ((*evil)->dir)
                             {
@@ -1372,6 +1445,42 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
         //BATTLES *****************************************
 
+        if (!vHeroes.empty() && !vEvils.empty())
+        {
+            bool killed = false;
+
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<dll::Creature>::iterator hero = vHeroes.begin(); hero < vHeroes.end(); hero++)
+                {
+                    if (!((*hero)->x >= (*evil)->ex || (*hero)->ex <= (*evil)->x ||
+                        (*hero)->y >= (*evil)->ey || (*hero)->ey <= (*evil)->y))
+                    {
+                        if ((*hero)->Shoot())(*evil)->lifes -= (*hero)->strenght;
+                        if ((*evil)->Shoot())(*hero)->lifes -= (*evil)->strenght;
+
+                        if ((*hero)->lifes <= 0)
+                        {
+                            (*hero)->Release();
+                            vHeroes.erase(hero);
+                            break;
+                        }
+                        if ((*evil)->lifes <= 0)
+                        {
+                            score += 10 * (int)(game_speed) * (*evil)->strenght;
+                            (*evil)->Release();
+                            vEvils.erase(evil);
+                            killed = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (killed)break;
+            }
+        }
+
+
 
 
         //DRAW THINGS ***************************************
@@ -1452,7 +1561,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
-        if (TownHall)Draw->DrawBitmap(bmpTownHall, D2D1::RectF(TownHall->x, TownHall->y, TownHall->ex, TownHall->ey));
+        if (TownHall)
+        {
+            Draw->DrawBitmap(bmpTownHall, D2D1::RectF(TownHall->x, TownHall->y, TownHall->ex, TownHall->ey));
+            if (LifeBrush && HitBrush && CritBrush)
+            {
+                if (TownHall->lifes > 500)Draw->DrawLine(D2D1::Point2F(TownHall->x - 10.0f, TownHall->ey + 5.0f),
+                    D2D1::Point2F(TownHall->x + (float)(TownHall->lifes / 300), TownHall->ey + 5.0f), LifeBrush, 5.0f);
+                else if (TownHall->lifes > 100)Draw->DrawLine(D2D1::Point2F(TownHall->x - 10.0f, TownHall->ey + 5.0f),
+                    D2D1::Point2F(TownHall->x + (float)(TownHall->lifes / 300), TownHall->ey + 5.0f), HitBrush, 5.0f);
+                else Draw->DrawLine(D2D1::Point2F(TownHall->x - 10.0f, TownHall->ey + 5.0f),
+                    D2D1::Point2F(TownHall->x + (float)(TownHall->lifes / 300), TownHall->ey + 5.0f), CritBrush, 5.0f);
+            }
+        }
         Draw->DrawBitmap(bmpHero, D2D1::RectF(FieldGrid[13][17]->x +10.0f, FieldGrid[13][17]->y, 
             FieldGrid[13][17]->x + 37.0f, FieldGrid[13][17]->y + 40.0f));
 
@@ -1472,6 +1593,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             for (std::vector<dll::BUILDING*>::iterator it = vHomes.begin(); it < vHomes.end(); ++it)
             {
                 Draw->DrawBitmap(bmpHome, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+                if (LifeBrush && HitBrush && CritBrush)
+                {
+                    if ((*it)->lifes > 60)Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 80), (*it)->ey + 5.0f), LifeBrush, 5.0f);
+                    else if ((*it)->lifes > 20)Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 80), (*it)->ey + 5.0f), HitBrush, 5.0f);
+                    else Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 80), (*it)->ey + 5.0f), CritBrush, 5.0f);
+                }
             }
         }
         if (!vTowers.empty())
@@ -1479,6 +1609,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             for (std::vector<dll::BUILDING*>::iterator it = vTowers.begin(); it < vTowers.end(); ++it)
             {
                 Draw->DrawBitmap(bmpTower, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+                if (LifeBrush && HitBrush && CritBrush)
+                {
+                    if ((*it)->lifes > 60)Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 3), (*it)->ey + 5.0f), LifeBrush, 5.0f);
+                    else if ((*it)->lifes > 20)Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 3), (*it)->ey + 5.0f), HitBrush, 5.0f);
+                    else Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 3), (*it)->ey + 5.0f), CritBrush, 5.0f);
+                }
             }
         }
         if (!vWalls.empty())
@@ -1499,7 +1638,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         if (!vHeroes.empty())
         {
             for (std::vector<dll::Creature>::iterator it = vHeroes.begin(); it < vHeroes.end(); ++it)
+            {
                 Draw->DrawBitmap(bmpHero, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+                if (LifeBrush && HitBrush && CritBrush)
+                {
+                    if ((*it)->lifes > 60)Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 3), (*it)->ey + 5.0f), LifeBrush, 5.0f);
+                    else if ((*it)->lifes > 20)Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 3), (*it)->ey + 5.0f), HitBrush, 5.0f);
+                    else Draw->DrawLine(D2D1::Point2F((*it)->x - 10.0f, (*it)->ey + 5.0f),
+                        D2D1::Point2F((*it)->x + (float)((*it)->lifes / 3), (*it)->ey + 5.0f), CritBrush, 5.0f);
+                }
+            }
         }
 
         if(!vEvils.empty())
@@ -1522,6 +1672,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 case creatures::bear:
                     Draw->DrawBitmap(bmpBear, D2D1::RectF((*evil)->x, (*evil)->y, (*evil)->ex, (*evil)->ey));
                     break;
+                }
+
+                if (LifeBrush && HitBrush && CritBrush)
+                {
+                    if ((*evil)->lifes > 50)Draw->DrawLine(D2D1::Point2F((*evil)->x - 10.0f, (*evil)->ey + 5.0f),
+                        D2D1::Point2F((*evil)->x + (float)((*evil)->lifes / 3), (*evil)->ey + 5.0f), LifeBrush, 5.0f);
+                    else if ((*evil)->lifes > 20)Draw->DrawLine(D2D1::Point2F((*evil)->x - 10.0f, (*evil)->ey + 5.0f),
+                        D2D1::Point2F((*evil)->x + (float)((*evil)->lifes / 3), (*evil)->ey + 5.0f), HitBrush, 5.0f);
+                    else Draw->DrawLine(D2D1::Point2F((*evil)->x - 10.0f, (*evil)->ey + 5.0f),
+                        D2D1::Point2F((*evil)->x + (float)((*evil)->lifes / 3), (*evil)->ey + 5.0f), CritBrush, 5.0f);
                 }
             }
 
