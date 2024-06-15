@@ -1443,6 +1443,111 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!vEvils.empty() && !vWalls.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<dll::BUILDING*>::iterator wall = vWalls.begin(); wall < vWalls.end(); wall++)
+                {
+                    if (!((*evil)->x >= (*wall)->ex || (*evil)->ex <= (*wall)->x ||
+                        (*evil)->y >= (*wall)->ey || (*evil)->ey <= (*wall)->y))
+                    {
+                        switch ((*evil)->dir)
+                        {
+                        case dirs::up:
+                            (*evil)->AIDataIN.obst_up = true;
+                            break;
+
+                        case dirs::u_r:
+                            (*evil)->AIDataIN.obst_up = true;
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::u_l:
+                            (*evil)->AIDataIN.obst_up = true;
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::down:
+                            (*evil)->AIDataIN.obst_down = true;
+                            break;
+
+                        case dirs::d_r:
+                            (*evil)->AIDataIN.obst_down = true;
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::d_l:
+                            (*evil)->AIDataIN.obst_down = true;
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::left:
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::right:
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!vEvils.empty() && !vHomes.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<dll::BUILDING*>::iterator home = vHomes.begin(); home < vHomes.end(); home++)
+                {
+                    if (!((*evil)->x >= (*home)->ex || (*evil)->ex <= (*home)->x ||
+                        (*evil)->y >= (*home)->ey || (*evil)->ey <= (*home)->y))
+                    {
+                        switch ((*evil)->dir)
+                        {
+                        case dirs::up:
+                            (*evil)->AIDataIN.obst_up = true;
+                            break;
+
+                        case dirs::u_r:
+                            (*evil)->AIDataIN.obst_up = true;
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::u_l:
+                            (*evil)->AIDataIN.obst_up = true;
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::down:
+                            (*evil)->AIDataIN.obst_down = true;
+                            break;
+
+                        case dirs::d_r:
+                            (*evil)->AIDataIN.obst_down = true;
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::d_l:
+                            (*evil)->AIDataIN.obst_down = true;
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::left:
+                            (*evil)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::right:
+                            (*evil)->AIDataIN.obst_right = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+
         //BATTLES *****************************************
 
         if (!vHeroes.empty() && !vEvils.empty())
@@ -1479,9 +1584,69 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 if (killed)break;
             }
         }
+        
+        if (!vEvils.empty() && !vWalls.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<dll::BUILDING*>::iterator wall = vWalls.begin(); wall < vWalls.end(); wall++)
+                {
+                    if (!((*evil)->x >= (*wall)->ex || (*evil)->ex <= (*wall)->x ||
+                        (*evil)->y >= (*wall)->ey || (*evil)->ey <= (*wall)->y))
+                    {
+                        (*wall)->lifes -= (*evil)->strenght;
+                        if ((*wall)->lifes <= 0)
+                        {
+                            vFires.push_back(dll::BUILDING::TileFactory(buildings::fire, (*wall)->x, (*wall)->y));
+                            (*wall)->Release();
+                            vWalls.erase(wall);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
 
+        if (!vEvils.empty() && !vHomes.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<dll::BUILDING*>::iterator wall = vHomes.begin(); wall < vHomes.end(); wall++)
+                {
+                    if (!((*evil)->x >= (*wall)->ex || (*evil)->ex <= (*wall)->x ||
+                        (*evil)->y >= (*wall)->ey || (*evil)->ey <= (*wall)->y))
+                    {
+                        (*wall)->lifes -= (*evil)->strenght;
+                        if ((*wall)->lifes <= 0)
+                        {
+                            vFires.push_back(dll::BUILDING::TileFactory(buildings::fire, (*wall)->x, (*wall)->y));
+                            (*wall)->Release();
+                            vHomes.erase(wall);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
 
-
+        if (!vEvils.empty() && TownHall)
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                if (!((*evil)->x >= TownHall->ex || (*evil)->ex <= TownHall->x ||
+                    (*evil)->y >= TownHall->ey || (*evil)->ey <= TownHall->y))
+                {
+                    TownHall->lifes -= (*evil)->strenght;
+                    if (TownHall->lifes <= 0)
+                    {
+                        vFires.push_back(dll::BUILDING::TileFactory(buildings::fire, TownHall->x, TownHall->y));
+                        delete TownHall;
+                        TownHall = nullptr;
+                        break;
+                    }
+                }
+            }
+        }
 
         //DRAW THINGS ***************************************
 
@@ -1634,6 +1799,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 Draw->DrawBitmap(bmpTree, D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
             }
         }
+        if (!vFires.empty())
+        {
+            for (std::vector<dll::BUILDING*>::iterator it = vFires.begin(); it < vFires.end(); it++)
+            {
+                int frame = (*it)->GetFrame();
+                if (frame > 15)
+                {
+                    (*it)->Release();
+                    vFires.erase(it);
+                    if (!TownHall)GameOver();
+                    break;
+                }
+                else
+                    Draw->DrawBitmap(bmpFire[frame], D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
+            }
+        }
 
         if (!vHeroes.empty())
         {
@@ -1685,12 +1866,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
 
-
-        
-
-
         //////////////////////////////////////////////////////
         Draw->EndDraw();
+
+        
     }
 
     std::remove(tmp_file);

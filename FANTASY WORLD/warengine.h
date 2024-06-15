@@ -255,6 +255,10 @@ namespace dll
 					NewDims(47.0f, 50.0f);
 					lifes = 10000;
 					break;
+
+				case buildings::fire:
+					NewDims(50.0f, 49.0f);
+					break;
 				}
 			}
 
