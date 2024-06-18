@@ -121,9 +121,16 @@ ID2D1Bitmap* bmpBear = nullptr;
 
 /////////////////////////////////////////////////////////
 
+struct AXE
+{
+    dll:: OBJECT Dims;
+    dirs dir = dirs::stop;
+};
+
+
 std::vector<dll::Creature> vHeroes;
 std::vector<dll::Creature> vEvils;
-std::vector<dll::OBJECT> vAxes;
+std::vector<AXE> vAxes;
 
 dll::BUILDING* FieldGrid[14][20];
 dll::BUILDING* TownHall = nullptr;
@@ -1585,6 +1592,122 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
         
+        if (!vTowers.empty() && !vEvils.empty())
+        {
+            for (std::vector<dll::BUILDING*>::iterator tower = vTowers.begin(); tower < vTowers.end(); tower++)
+            {
+                bool killed = false;
+                for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+                {
+                    if (!((*evil)->x >= (*tower)->ex || (*evil)->ex <= (*tower)->x ||
+                        (*evil)->y >= (*tower)->ey || (*evil)->ey <= (*tower)->y))
+                    {
+                        (*tower)->lifes -= (*evil)->strenght;
+                        if ((*tower)->lifes <= 0)
+                        {
+                            vFires.push_back(dll::BUILDING::TileFactory(buildings::fire, (*tower)->x, (*tower)->y));
+                            (*tower)->Release();
+                            vTowers.erase(tower);
+                            killed = true;
+                            break;
+                        }
+                    }
+                }
+                if (killed)break;
+            }
+        }
+
+        if (!vTowers.empty() && !vEvils.empty())
+        {
+            for (std::vector<dll::BUILDING*>::iterator tower = vTowers.begin(); tower < vTowers.end(); tower++)
+            {
+                for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+                {
+         
+                    if (((abs((*tower)->x - (*evil)->ex) < 100) || (abs((*tower)->ex - (*evil)->x) < 100)) &&
+                        ((abs((*tower)->y - (*evil)->ey) < 100) || (abs((*tower)->ey - (*evil)->y) < 100)))
+                    {
+                        if (rand() % 100 == 6)
+                        {
+                            vAxes.push_back({ dll::OBJECT((*tower)->x + 10.0f, (*tower)->y, 15.0f, 15.0f) });
+
+                            if ((*tower)->y > (*evil)->y && (*tower)->y < (*evil)->ey)
+                            {
+                                if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::right;
+                                else if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::left;
+                            }
+                            else if ((*tower)->y < (*evil)->y)
+                            {
+                                if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::d_r;
+                                else if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::d_l;
+                                else vAxes.back().dir = dirs::down;
+                            }
+                            else if ((*tower)->y > (*evil)->y)
+                            {
+                                if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::u_r;
+                                else if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::u_l;
+                                else vAxes.back().dir = dirs::up;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!vAxes.empty())
+        {
+            for (std::vector<AXE>::iterator axe = vAxes.begin(); axe < vAxes.end(); axe++)
+            {
+                switch ((*axe).dir)
+                {
+                case dirs::up:
+                    (*axe).Dims.y -= game_speed * 3;
+                    break;
+
+                case dirs::down:
+                    (*axe).Dims.y += game_speed * 3;
+                    break;
+
+                case dirs::left:
+                    (*axe).Dims.x -= game_speed * 3;
+                    break;
+
+                case dirs::right:
+                    (*axe).Dims.x += game_speed * 3;
+                    break;
+
+                case dirs::u_r:
+                    (*axe).Dims.y -= game_speed * 3;
+                    (*axe).Dims.x += game_speed * 3;
+                    break;
+
+                case dirs::u_l:
+                    (*axe).Dims.y -= game_speed * 3;
+                    (*axe).Dims.x -= game_speed * 3;
+                    break;
+                
+                case dirs::d_r:
+                    (*axe).Dims.y += game_speed * 3;
+                    (*axe).Dims.x += game_speed * 3;
+                    break;
+
+                case dirs::d_l:
+                    (*axe).Dims.y += game_speed * 3;
+                    (*axe).Dims.x -= game_speed * 3;
+                    break;
+                }
+
+                (*axe).Dims.SetEdges();
+
+                if ((*axe).Dims.ex <= 0 || (*axe).Dims.x >= scr_width || (*axe).Dims.ey <= 50.0f || (*axe).Dims.y >= scr_height)
+                {
+                    vAxes.erase(axe);
+                    break;
+                }
+            }
+        }
+
         if (!vEvils.empty() && !vWalls.empty())
         {
             for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
@@ -1815,6 +1938,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     Draw->DrawBitmap(bmpFire[frame], D2D1::RectF((*it)->x, (*it)->y, (*it)->ex, (*it)->ey));
             }
         }
+        if (!vAxes.empty())
+        {
+            for (std::vector<AXE>::iterator it = vAxes.begin(); it < vAxes.end(); ++it)
+            {
+                Draw->DrawBitmap(bmpAxe, D2D1::RectF((*it).Dims.x, (*it).Dims.y, (*it).Dims.ex, (*it).Dims.ey));
+            }
+        }
+
 
         if (!vHeroes.empty())
         {
