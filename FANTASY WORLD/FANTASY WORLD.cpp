@@ -1249,8 +1249,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
  
         //EVILS
 
-        if (vEvils.size() <= 3 + game_speed && rand() % 500 == 66)
-            vEvils.push_back(dll::CreatureFactory(static_cast<creatures>(rand() % 4), (float)(rand() % 1000), 0));
+        if (vEvils.size() <= 3 + game_speed && rand() % 800 == 66)
+            vEvils.push_back(dll::CreatureFactory(static_cast<creatures>(rand() % 4), (float)(rand() % 1000 + 100), 0));
 
         if (!vEvils.empty())
         {
@@ -1634,18 +1634,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                             if ((*tower)->y > (*evil)->y && (*tower)->y < (*evil)->ey)
                             {
                                 if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::right;
-                                else if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::left;
+                                else if ((*tower)->x > (*evil)->x)vAxes.back().dir = dirs::left;
                             }
                             else if ((*tower)->y < (*evil)->y)
                             {
                                 if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::d_r;
-                                else if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::d_l;
+                                else if ((*tower)->x > (*evil)->x)vAxes.back().dir = dirs::d_l;
                                 else vAxes.back().dir = dirs::down;
                             }
                             else if ((*tower)->y > (*evil)->y)
                             {
                                 if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::u_r;
-                                else if ((*tower)->x < (*evil)->x)vAxes.back().dir = dirs::u_l;
+                                else if ((*tower)->x > (*evil)->x)vAxes.back().dir = dirs::u_l;
                                 else vAxes.back().dir = dirs::up;
                             }
                             break;
@@ -1743,6 +1743,48 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         if ((*wall)->lifes <= 0)
                         {
                             vFires.push_back(dll::BUILDING::TileFactory(buildings::fire, (*wall)->x, (*wall)->y));
+                            
+                            int row = (int)(((*wall)->y - 50.0f) / 50);
+                            int col = (int)((*wall)->x / 50);
+
+                            bool up_ok = (row - 1 >= 0);
+                            bool down_ok = (row + 1 <= 12);
+                            bool left_ok = (col - 1 >= 0);
+                            bool right_ok = (col + 1 <= 19);
+
+                            if (up_ok)
+                            {
+                                if (FieldGrid[row - 1][col]->type == buildings::soil_tile)
+                                    FieldGrid[row - 1][col]->type = buildings::snow_tile;
+                                
+                                if (left_ok)
+                                    if (FieldGrid[row - 1][col - 1]->type == buildings::soil_tile)
+                                        FieldGrid[row - 1][col - 1]->type = buildings::snow_tile;
+                                
+                                if (right_ok)
+                                    if (FieldGrid[row - 1][col + 1]->type == buildings::soil_tile)
+                                        FieldGrid[row - 1][col + 1]->type = buildings::snow_tile;
+                            }
+                            if (down_ok)
+                            {
+                                if (FieldGrid[row + 1][col]->type == buildings::soil_tile)
+                                    FieldGrid[row + 1][col]->type = buildings::snow_tile;
+
+                                if (left_ok)
+                                    if (FieldGrid[row + 1][col - 1]->type == buildings::soil_tile)
+                                        FieldGrid[row + 1][col - 1]->type = buildings::snow_tile;
+
+                                if (right_ok)
+                                    if (FieldGrid[row + 1][col + 1]->type == buildings::soil_tile)
+                                        FieldGrid[row + 1][col + 1]->type = buildings::snow_tile;
+                            }
+                            if (left_ok)
+                                if (FieldGrid[row][col - 1]->type == buildings::soil_tile)
+                                    FieldGrid[row][col - 1]->type = buildings::snow_tile;
+                            if (right_ok)
+                                if (FieldGrid[row][col + 1]->type == buildings::soil_tile)
+                                    FieldGrid[row][col + 1]->type = buildings::snow_tile;
+                            
                             (*wall)->Release();
                             vHomes.erase(wall);
                             break;
@@ -1929,6 +1971,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 int frame = (*it)->GetFrame();
                 if (frame > 15)
                 {
+                    int row = (int)(((*it)->y - 50.0f) / 50);
+                    int col = (int)((*it)->x / 50);
+                    FieldGrid[row][col]->type = buildings::snow_tile;
                     (*it)->Release();
                     vFires.erase(it);
                     if (!TownHall)GameOver();
