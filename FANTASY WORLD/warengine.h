@@ -140,7 +140,7 @@ namespace dll
 	{
 		protected:
 			float speed = 1.0f;
-			int shoot_delay = 25;
+			int shoot_delay = 250;
 			int chop_delay = 25;
 			PATH Path;
 			
@@ -170,28 +170,28 @@ namespace dll
 					NewDims(80.0f, 60.0f);
 					lifes = 100;
 					speed = 0.8f;
-					strenght = 15;
+					strenght = 8;
 					break;
 
 				case creatures::evil2:
 					NewDims(80.0f, 80.0f);
 					lifes = 120;
 					speed = 0.6f;
-					strenght = 18;
+					strenght = 9;
 					break;
 
 				case creatures::evil3:
 					NewDims(70.0f, 78.0f);
 					lifes = 110;
 					speed = 0.9f;
-					strenght = 20;
+					strenght = 5;
 					break;
 
 				case creatures::bear:
 					NewDims(100.0f, 100.0f);
 					lifes = 150;
 					speed = 0.5f;
-					strenght = 25;
+					strenght = 12;
 					break;
 
 				}

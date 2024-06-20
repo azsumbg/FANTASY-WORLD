@@ -82,6 +82,8 @@ int wood = 100;
 float game_speed = 0.5f;
 int mins = 0;
 int secs = 0;
+int win_percentage = 0;
+
 /////////////////////////////////////////////////////////
 
 ID2D1Factory* iFactory = nullptr;
@@ -214,6 +216,7 @@ void InitGame()
     carry_wall = false;
     carry_tower = false;
     base_under_attack = false;
+    win_percentage = 0;
 
     vAxes.clear();
     
@@ -439,8 +442,21 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
 
     case WM_TIMER:
         if (pause)break;
-        secs++;
-        mins = (int)(floor(secs / 60));
+        else
+        {
+            float conquered = 0;
+            for (int row = 0; row < 14; row++)
+            {
+                for (int col = 0; col < 14; col++)
+                {
+                    if (FieldGrid[row][col]->type != buildings::soil_tile && FieldGrid[row][col]->type != buildings::tree)
+                        conquered++;
+                }
+            }
+            win_percentage = (int)(conquered / 2800 * 100);
+            secs++;
+            mins = (int)(floor(secs / 60));
+        }
         break;
 
     case WM_SETCURSOR:
@@ -1249,7 +1265,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
  
         //EVILS
 
-        if (vEvils.size() <= 3 + game_speed && rand() % 800 == 66)
+        if (vEvils.size() <= 2 + game_speed && rand() % 900 == 66)
             vEvils.push_back(dll::CreatureFactory(static_cast<creatures>(rand() % 4), (float)(rand() % 1000 + 100), 0));
 
         if (!vEvils.empty())
@@ -1575,11 +1591,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         {
                             (*hero)->Release();
                             vHeroes.erase(hero);
+                            (*evil)->AIDataIN.near_enemy_x = -1;
+                            (*evil)->AIDataIN.near_enemy_y = -1;
                             break;
                         }
                         if ((*evil)->lifes <= 0)
                         {
                             score += 10 * (int)(game_speed) * (*evil)->strenght;
+                            (*hero)->AIDataIN.near_enemy_x = -1;
+                            (*hero)->AIDataIN.near_enemy_y = -1;
                             (*evil)->Release();
                             vEvils.erase(evil);
                             killed = true;
@@ -1627,7 +1647,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     if (((abs((*tower)->x - (*evil)->ex) < 100) || (abs((*tower)->ex - (*evil)->x) < 100)) &&
                         ((abs((*tower)->y - (*evil)->ey) < 100) || (abs((*tower)->ey - (*evil)->y) < 100)))
                     {
-                        if (rand() % 100 == 6)
+                        if (rand() % 50 == 6)
                         {
                             vAxes.push_back({ dll::OBJECT((*tower)->x + 10.0f, (*tower)->y, 15.0f, 15.0f) });
 
@@ -1813,6 +1833,34 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!vEvils.empty() && !vAxes.empty())
+        {
+            bool killed = false;
+
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<AXE>::iterator axe = vAxes.begin(); axe < vAxes.end(); axe++)
+                {
+                    if (!((*evil)->x >= axe->Dims.ex || (*evil)->ex <= axe->Dims.x ||
+                        (*evil)->y >= axe->Dims.ey || (*evil)->ey <= axe->Dims.y))
+                    {
+                        vAxes.erase(axe);
+                        (*evil)->lifes -= (int)(20 * game_speed);
+                        if ((*evil)->lifes <= 0)
+                        {
+                            score += (int)(50 * game_speed);
+                            (*evil)->Release();
+                            vEvils.erase(evil);
+                            killed = true;
+                        }
+                        break;
+                    }
+                }
+
+                if (killed)break;
+            }
+        }
+
         //DRAW THINGS ***************************************
 
         Draw->BeginDraw();
@@ -1915,6 +1963,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             (float)(cur_pos.x) + 40.0f, (float)(cur_pos.y) + 40.0f));
         if (carry_tower)Draw->DrawBitmap(bmpTower, D2D1::RectF((float)(cur_pos.x), (float)(cur_pos.y),
             (float)(cur_pos.x) + 25.0f, (float)(cur_pos.y) + 50.0f));
+        
+        //DRAW STATUS ********************************
+
+        wchar_t status[300] = L"\0";
+        wchar_t add[5] = L"\0";
+        int txt_size = 0;
+
+        wcscpy_s(status, current_player);
+        
+        wcscat_s(status, L", ДЪРВЕТА: ");
+        wsprintf(add, L"%d", wood);
+        wcscat_s(status, add);
+
+        wcscat_s(status, L", ЗАВЛАДЕНИ: ");
+        wsprintf(add, L"%d", win_percentage);
+        wcscat_s(status, add);
+        wcscat_s(status, L" %");
+
+        wcscat_s(status, L", РЕЗУЛТАТ: ");
+        wsprintf(add, L"%d", score);
+        wcscat_s(status, add);
+        
+        for (int i = 0; i < 300; i++)
+            if (status[i] != '\0')txt_size++;
+            else break;
+
+        if (nrmTxt && txtBrush)
+            Draw->DrawText(status, txt_size, nrmTxt, D2D1::RectF(30.0f, scr_height - 60.0f, scr_width, scr_height), txtBrush);
+
         
         ////////////////////////////////////////////
 
