@@ -76,6 +76,7 @@ bool carry_wall = false;
 bool carry_heroe = false;
 bool carry_tower = false;
 bool base_under_attack = false;
+bool win_game = false;
 
 int score = 0;
 int wood = 100;
@@ -217,6 +218,8 @@ void InitGame()
     carry_tower = false;
     base_under_attack = false;
     win_percentage = 0;
+    win_game = false;
+
 
     vAxes.clear();
     
@@ -447,13 +450,15 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
             float conquered = 0;
             for (int row = 0; row < 14; row++)
             {
-                for (int col = 0; col < 14; col++)
+                for (int col = 0; col < 20; col++)
                 {
-                    if (FieldGrid[row][col]->type != buildings::soil_tile && FieldGrid[row][col]->type != buildings::tree)
+                    if (FieldGrid[row][col]->type == buildings::soil_tile || FieldGrid[row][col]->type == buildings::townhall
+                        || FieldGrid[row][col]->type == buildings::home || FieldGrid[row][col]->type == buildings::tower
+                        || FieldGrid[row][col]->type == buildings::wall)
                         conquered++;
                 }
             }
-            win_percentage = (int)(conquered / 2800 * 100);
+            win_percentage = (int)(conquered / 280 * 100);
             secs++;
             mins = (int)(floor(secs / 60));
         }
@@ -1104,13 +1109,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 now.base_under_attack = base_under_attack;
                 now.current_action = (*it)->AIDataIN.current_action;
                 
-                now.tree_in_range =  (*it)->AIDataIN.tree_in_range;
-                now.near_tree_x = (*it)->AIDataIN.near_tree_x;
-                now.near_tree_y = (*it)->AIDataIN.near_tree_y;
+                now.tree_in_range = false;
+                now.near_tree_x = -1;
+                now.near_tree_y = -1;
                 
-                now.near_enemy_lifes = (*it)->AIDataIN.near_enemy_lifes;
-                now.near_enemy_x = (*it)->AIDataIN.near_enemy_x;
-                now.near_enemy_y = (*it)->AIDataIN.near_enemy_y;
+                now.near_enemy_lifes = -1;
+                now.near_enemy_x = -1;
+                now.near_enemy_y = -1;
 
                 now.obst_down = (*it)->AIDataIN.obst_down;
                 now.obst_up = (*it)->AIDataIN.obst_up;
@@ -1136,6 +1141,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                                 now.near_enemy_x = (*evil)->x;
                                 now.near_enemy_y = (*evil)->y;
                             }
+                            
                         }
                     }
                 }
@@ -1255,7 +1261,44 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 case actions::shelter:
                     if ((*it)->Move(game_speed, (*it)->AIDataOut.new_x, (*it)->AIDataOut.new_y) == DLL_FAIL)
                     {
-                        
+                        switch ((*it)->dir)
+                        {
+                        case dirs::up:
+                            (*it)->AIDataIN.obst_up = true;
+                            break;
+
+                        case dirs::u_r:
+                            (*it)->AIDataIN.obst_up = true;
+                            (*it)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::u_l:
+                            (*it)->AIDataIN.obst_up = true;
+                            (*it)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::down:
+                            (*it)->AIDataIN.obst_down = true;
+                            break;
+
+                        case dirs::d_r:
+                            (*it)->AIDataIN.obst_down = true;
+                            (*it)->AIDataIN.obst_right = true;
+                            break;
+
+                        case dirs::d_l:
+                            (*it)->AIDataIN.obst_down = true;
+                            (*it)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::left:
+                            (*it)->AIDataIN.obst_left = true;
+                            break;
+
+                        case dirs::right:
+                            (*it)->AIDataIN.obst_right = true;
+                            break;
+                        }
                     }
                     break;
                 }
@@ -1814,6 +1857,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        base_under_attack = false;
+
         if (!vEvils.empty() && TownHall)
         {
             for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
@@ -1822,6 +1867,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     (*evil)->y >= TownHall->ey || (*evil)->ey <= TownHall->y))
                 {
                     TownHall->lifes -= (*evil)->strenght;
+
+                    base_under_attack = true;
+
                     if (TownHall->lifes <= 0)
                     {
                         vFires.push_back(dll::BUILDING::TileFactory(buildings::fire, TownHall->x, TownHall->y));
@@ -1984,6 +2032,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         wcscat_s(status, L", РЕЗУЛТАТ: ");
         wsprintf(add, L"%d", score);
         wcscat_s(status, add);
+
+        wcscat_s(status, L", ВРЕМЕ: ");
+        if (mins < 10)
+            wcscat_s(status, L"0");
+        wsprintf(add, L"%d", mins);
+        wcscat_s(status, add);
+
+        wcscat_s(status, L" : ");
+        if (secs - mins * 60 < 10)
+            wcscat_s(status, L"0");
+        wsprintf(add, L"%d", secs - mins * 60);
+        wcscat_s(status, add);
         
         for (int i = 0; i < 300; i++)
             if (status[i] != '\0')txt_size++;
@@ -2122,7 +2182,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         //////////////////////////////////////////////////////
         Draw->EndDraw();
 
-        
+        if (win_percentage >= 85)
+        {
+            win_game = true;
+            GameOver();
+        }
     }
 
     std::remove(tmp_file);
