@@ -30,10 +30,14 @@
 
 #define tmp_file ".\\res\\data\\temp.dat"
 #define Ltmp_file L".\\res\\data\\temp.dat"
-#define snd_file ".\\res\\snd\\main.dat"
+#define snd_file L".\\res\\snd\\main.dat"
 #define help_file L".\\res\\data\\help.dat"
 #define record_file L".\\res\\data\\record.dat"
 #define save_file L".\\res\\data\\save.dat"
+
+#define first_record 3001
+#define record 3002
+#define no_record 3003
 
 
 WNDCLASS bWin = { 0 };
@@ -350,7 +354,35 @@ void InitGame()
         }
     }
 }
+BOOL CheckRecord()
+{
+    if (score < 1)return no_record;
 
+    int result = 0;
+    CheckFile(record_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; i++)rec << static_cast<int>(current_player[i]) << std::endl;
+        rec.close();
+        return first_record;
+    }
+
+    std::wifstream check(record_file);
+    check >> result;
+    check.close();
+
+    if (score >> result)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; i++)rec << static_cast<int>(current_player[i]) << std::endl;
+        rec.close();
+        return record;
+    }
+    return no_record;
+}
 void GameOver()
 {
     KillTimer(bHwnd, bTimer);
@@ -585,156 +617,193 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
         break;
 
     case WM_LBUTTONDOWN:
-        if (!carry_heroe && !carry_house && !carry_wall && !carry_tower)
+        if (HIWORD(lParam) <= 50)
         {
-            if (wood > 0)
+            if (LOWORD(lParam) >= b1TxtRect.left && LOWORD(lParam) <= b1TxtRect.right)
+            {
+                if (name_set)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                    break;
+                }
+                if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                if (DialogBox(bIns, MAKEINTRESOURCE(IDD_PLAYER), hwnd, &bDlgProc) == IDOK)name_set = true;
+                break;
+            }
+            if (LOWORD(lParam) >= b2TxtRect.left && LOWORD(lParam) <= b2TxtRect.right)
+            {
+                mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                if (sound)
+                {
+                    sound = false;
+                    PlaySound(NULL, NULL, NULL);
+                    break;
+                }
+                else
+                {
+                    sound = true;
+                    PlaySound(snd_file, NULL, SND_ASYNC | SND_LOOP);
+                    break;
+
+                }
+                break;
+            }
+
+
+        }
+        else
+        {
+            if (!carry_heroe && !carry_house && !carry_wall && !carry_tower)
+            {
+                if (wood > 0)
+                {
+                    int row = HIWORD(lParam) / 50;
+                    int col = LOWORD(lParam) / 50;
+
+                    if (row == 13 && col == 17)
+                    {
+                        if (wood < 25)
+                        {
+                            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                            break;
+                        }
+                        carry_heroe = true;
+                        wood -= 25;
+                        break;
+                    }
+                    else if (row == 13 && col == 18)
+                    {
+                        if (wood < 100)
+                        {
+                            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                            break;
+                        }
+                        wood -= 100;
+                        carry_house = true;
+                        break;
+                    }
+                    else if (row == 13 && col == 19)
+                    {
+                        if (wood < 50)
+                        {
+                            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                            break;
+                        }
+                        carry_wall = true;
+                        wood -= 50;
+                        break;
+                    }
+                    else if (row == 13 && col == 16)
+                    {
+                        if (wood < 80)
+                        {
+                            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                            break;
+                        }
+                        carry_tower = true;
+                        wood -= 80;
+                        break;
+                    }
+                }
+                else if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+            }
+            else
             {
                 int row = HIWORD(lParam) / 50;
                 int col = LOWORD(lParam) / 50;
 
-                if (row == 13 && col == 17)
+                if (row == 13 && (carry_heroe || carry_house || carry_tower || carry_wall))
                 {
-                    if (wood < 25)
-                    {
-                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-                        break;
-                    }
-                    carry_heroe = true;
-                    wood -= 25;
+                    if (carry_heroe)wood += 25;
+                    if (carry_house)wood += 100;
+                    if (carry_wall)wood += 50;
+                    if (carry_tower)wood += 80;
+
+                    carry_heroe = false;
+                    carry_house = false;
+                    carry_tower = false;
+                    carry_wall = false;
                     break;
                 }
-                else if (row == 13 && col == 18)
+
+                if (carry_heroe && TownHall)
                 {
-                    if (wood < 100)
-                    {
-                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-                        break;
-                    }
-                    wood -= 100;
-                    carry_house = true;
-                    break;
+                    vHeroes.push_back(dll::CreatureFactory(creatures::hero, TownHall->x + (float)(rand() % 50),
+                        (float)(TownHall->y - rand() % 20)));
+                    carry_heroe = false;
                 }
-                else if (row == 13 && col == 19)
+                if (carry_house)
                 {
-                    if (wood < 50)
+                    if (row < 13 && col < 20)
                     {
-                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-                        break;
-                    }
-                    carry_wall = true;
-                    wood -= 50;
-                    break;
-                }
-                else if (row == 13 && col == 16)
-                {
-                    if (wood < 80)
-                    {
-                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-                        break;
-                    }
-                    carry_tower = true;
-                    wood -= 80;
-                    break;
-                }
-            }
-            else if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-        }
-        else
-        {
-            int row = HIWORD(lParam) / 50;
-            int col = LOWORD(lParam) / 50;
-
-            if (row == 13 && (carry_heroe || carry_house || carry_tower || carry_wall))
-            {
-                if (carry_heroe)wood += 25;
-                if (carry_house)wood += 100;
-                if (carry_wall)wood += 50;
-                if (carry_tower)wood += 80;
-
-                carry_heroe = false;
-                carry_house = false;
-                carry_tower = false;
-                carry_wall = false;
-                break;
-            }
-
-            if (carry_heroe && TownHall)
-            {
-                vHeroes.push_back(dll::CreatureFactory(creatures::hero, TownHall->x + (float)(rand() % 50),
-                    (float)(TownHall->y - rand() % 20)));
-                carry_heroe = false;
-            }
-            if (carry_house)
-            {
-                if (row < 13 && col < 20)
-                {
-                    if (FieldGrid[row][col]->type == buildings::soil_tile)
-                    {
-                        vHomes.push_back(dll::BUILDING::TileFactory(buildings::home, FieldGrid[row][col]->x,
-                            FieldGrid[row][col]->y));
-                        carry_house = false;
-
-                        bool up_ok = (row - 1 >= 0);
-                        bool down_ok = (row + 1 <= 12);
-                        bool left_ok = (col - 1 >= 0);
-                        bool right_ok = (col + 1 <= 19);
-
-                        if (up_ok)
+                        if (FieldGrid[row][col]->type == buildings::soil_tile)
                         {
-                            FieldGrid[row - 1][col]->type = buildings::soil_tile;
-                            if (left_ok)FieldGrid[row - 1][col - 1]->type = buildings::soil_tile;
-                            if (right_ok)FieldGrid[row - 1][col + 1]->type = buildings::soil_tile;
+                            vHomes.push_back(dll::BUILDING::TileFactory(buildings::home, FieldGrid[row][col]->x,
+                                FieldGrid[row][col]->y));
+                            carry_house = false;
+
+                            bool up_ok = (row - 1 >= 0);
+                            bool down_ok = (row + 1 <= 12);
+                            bool left_ok = (col - 1 >= 0);
+                            bool right_ok = (col + 1 <= 19);
+
+                            if (up_ok)
+                            {
+                                FieldGrid[row - 1][col]->type = buildings::soil_tile;
+                                if (left_ok)FieldGrid[row - 1][col - 1]->type = buildings::soil_tile;
+                                if (right_ok)FieldGrid[row - 1][col + 1]->type = buildings::soil_tile;
+                            }
+                            if (down_ok)
+                            {
+                                FieldGrid[row + 1][col]->type = buildings::soil_tile;
+                                if (left_ok)FieldGrid[row + 1][col - 1]->type = buildings::soil_tile;
+                                if (right_ok)FieldGrid[row + 1][col + 1]->type = buildings::soil_tile;
+                            }
+                            if (left_ok)FieldGrid[row][col - 1]->type = buildings::soil_tile;
+                            if (right_ok)FieldGrid[row][col + 1]->type = buildings::soil_tile;
                         }
-                        if (down_ok)
+                        else
                         {
-                            FieldGrid[row + 1][col]->type = buildings::soil_tile;
-                            if (left_ok)FieldGrid[row + 1][col - 1]->type = buildings::soil_tile;
-                            if (right_ok)FieldGrid[row + 1][col + 1]->type = buildings::soil_tile;
+                            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                            carry_house = false;
+                            wood += 100;
                         }
-                        if (left_ok)FieldGrid[row][col - 1]->type = buildings::soil_tile;
-                        if (right_ok)FieldGrid[row][col + 1]->type = buildings::soil_tile;
-                    }
-                    else
-                    {
-                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-                        carry_house = false;
-                        wood += 100;
                     }
                 }
-            }
-            if (carry_wall)
-            {
-                if (row < 13 && col < 20)
+                if (carry_wall)
                 {
-                    if (FieldGrid[row][col]->type == buildings::soil_tile)
+                    if (row < 13 && col < 20)
                     {
-                        vWalls.push_back(dll::BUILDING::TileFactory(buildings::wall, FieldGrid[row][col]->x,
-                            FieldGrid[row][col]->y));
-                        carry_wall = false;
-                    }
-                    else
-                    {
-                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-                        carry_wall = false;
-                        wood += 50;
+                        if (FieldGrid[row][col]->type == buildings::soil_tile)
+                        {
+                            vWalls.push_back(dll::BUILDING::TileFactory(buildings::wall, FieldGrid[row][col]->x,
+                                FieldGrid[row][col]->y));
+                            carry_wall = false;
+                        }
+                        else
+                        {
+                            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                            carry_wall = false;
+                            wood += 50;
+                        }
                     }
                 }
-            }
-            if (carry_tower)
-            {
-                if (row < 13 && col < 20)
+                if (carry_tower)
                 {
-                    if (FieldGrid[row][col]->type == buildings::soil_tile)
+                    if (row < 13 && col < 20)
                     {
-                        vTowers.push_back(dll::BUILDING::TileFactory(buildings::tower, FieldGrid[row][col]->x,
-                            FieldGrid[row][col]->y));
-                        carry_tower = false;
-                    }
-                    else
-                    {
-                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
-                        carry_tower = false;
-                        wood += 80;
+                        if (FieldGrid[row][col]->type == buildings::soil_tile)
+                        {
+                            vTowers.push_back(dll::BUILDING::TileFactory(buildings::tower, FieldGrid[row][col]->x,
+                                FieldGrid[row][col]->y));
+                            carry_tower = false;
+                        }
+                        else
+                        {
+                            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                            carry_tower = false;
+                            wood += 80;
+                        }
                     }
                 }
             }
@@ -1199,6 +1268,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 case actions::chop:
                     if ((*it)->Chop())
                     {
+                        if (sound)mciSendString(L"play .\\res\\snd\\cut.wav", NULL, NULL, NULL);
                         wood += 10;
                         vTrees[(*it)->AIDataIN.chopped_tree_number]->lifes -= 5;
                         
@@ -1632,6 +1702,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                         if ((*hero)->lifes <= 0)
                         {
+                            if (sound)mciSendString(L"play .\\res\\snd\\hdeath.wav", NULL, NULL, NULL);
                             (*hero)->Release();
                             vHeroes.erase(hero);
                             (*evil)->AIDataIN.near_enemy_x = -1;
@@ -1640,6 +1711,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         }
                         if ((*evil)->lifes <= 0)
                         {
+                            if (sound)mciSendString(L"play .\\res\\snd\\edeath.wav", NULL, NULL, NULL);
                             score += 10 * (int)(game_speed) * (*evil)->strenght;
                             (*hero)->AIDataIN.near_enemy_x = -1;
                             (*hero)->AIDataIN.near_enemy_y = -1;
@@ -1665,9 +1737,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     if (!((*evil)->x >= (*tower)->ex || (*evil)->ex <= (*tower)->x ||
                         (*evil)->y >= (*tower)->ey || (*evil)->ey <= (*tower)->y))
                     {
-                        (*tower)->lifes -= (*evil)->strenght;
+                        if ((*evil)->Shoot())(*tower)->lifes -= (*evil)->strenght;
                         if ((*tower)->lifes <= 0)
                         {
+                            if (sound)mciSendString(L"play .\\res\\snd\\explosion.wav", NULL, NULL, NULL);
                             vFires.push_back(dll::BUILDING::TileFactory(buildings::fire, (*tower)->x, (*tower)->y));
                             (*tower)->Release();
                             vTowers.erase(tower);
@@ -1690,8 +1763,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     if (((abs((*tower)->x - (*evil)->ex) < 100) || (abs((*tower)->ex - (*evil)->x) < 100)) &&
                         ((abs((*tower)->y - (*evil)->ey) < 100) || (abs((*tower)->ey - (*evil)->y) < 100)))
                     {
-                        if (rand() % 50 == 6)
+                        if (rand() % 100 == 6)
                         {
+                            if (sound)mciSendString(L"play .\\res\\snd\\shoot.wav", NULL, NULL, NULL);
                             vAxes.push_back({ dll::OBJECT((*tower)->x + 10.0f, (*tower)->y, 15.0f, 15.0f) });
 
                             if ((*tower)->y > (*evil)->y && (*tower)->y < (*evil)->ey)
