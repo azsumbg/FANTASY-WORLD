@@ -387,6 +387,49 @@ void GameOver()
 {
     KillTimer(bHwnd, bTimer);
     PlaySound(NULL, NULL, NULL);
+    if (win_game)
+    {
+        score += static_cast<int>(1000 * game_speed);
+        PlaySound(L".\\res\\snd\\tada.wav", NULL, SND_ASYNC);
+
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkBlue));
+        if (bigTxt && txtBrush)
+            Draw->DrawTextW(L"ПОЛЮСЪТ Е ТВОЙ !", 17, bigTxt, D2D1::RectF(200.0f, scr_height / 2 - 100.0f, 
+                scr_width, scr_height), txtBrush);
+        Draw->EndDraw();
+        Sleep(2000);
+    }
+    
+    wchar_t end_text[35] = L"БАЗАТА Е УНИЩОЖЕНА !";
+    int txt_size = 21;
+
+    switch (CheckRecord())
+    {
+    case no_record:
+        PlaySound(L".\\res\\snd\\loose.wav", NULL, SND_ASYNC);
+        break;
+
+    case first_record:
+        PlaySound(L".\\res\\snd\\record.wav", NULL, SND_ASYNC);
+        wcscpy_s(end_text, L"ПЪРВИ РЕКОРД НА ИГРАТА !");
+        txt_size = 25;
+        break;
+
+    case record:
+        PlaySound(L".\\res\\snd\\record.wav", NULL, SND_ASYNC);
+        wcscpy_s(end_text, L"НОВ СВЕТОВЕН РЕКОРД НА ИГРАТА !");
+        txt_size = 32;
+        break;
+    }
+
+    Draw->BeginDraw();
+    Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkBlue));
+    if (bigTxt && txtBrush)
+        Draw->DrawTextW(end_text, txt_size, bigTxt, D2D1::RectF(100.0f, scr_height / 2 - 100.0f,
+            scr_width, scr_height), txtBrush);
+    Draw->EndDraw();
+    Sleep(6500);
 
     bMsg.message = WM_QUIT;
     bMsg.wParam = 0;
@@ -1191,10 +1234,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 now.obst_left = (*it)->AIDataIN.obst_left;
                 now.obst_right = (*it)->AIDataIN.obst_right;
                 
-                now.shelter.left = static_cast<LONG>(TownHall->x);
-                now.shelter.right = static_cast<LONG>(TownHall->ex);
-                now.shelter.top = static_cast<LONG>(TownHall->y);
-                now.shelter.bottom = static_cast<LONG>(TownHall->ey);
+                if (TownHall)
+                {
+                    now.shelter.left = static_cast<LONG>(TownHall->x);
+                    now.shelter.right = static_cast<LONG>(TownHall->ex);
+                    now.shelter.top = static_cast<LONG>(TownHall->y);
+                    now.shelter.bottom = static_cast<LONG>(TownHall->ey);
+                }
 
                 if (vEvils.empty()) now.exist_enemy = false;
                 else
@@ -2187,7 +2233,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     FieldGrid[row][col]->type = buildings::snow_tile;
                     (*it)->Release();
                     vFires.erase(it);
-                    if (!TownHall)GameOver();
+                    
                     break;
                 }
                 else
@@ -2261,6 +2307,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             win_game = true;
             GameOver();
         }
+        if (!TownHall)GameOver();
     }
 
     std::remove(tmp_file);
