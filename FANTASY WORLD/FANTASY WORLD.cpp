@@ -106,7 +106,6 @@ ID2D1SolidColorBrush* CritBrush = nullptr;
 
 IDWriteFactory* iWriteFactory = nullptr;
 IDWriteTextFormat* nrmTxt = nullptr;
-IDWriteTextFormat* midTxt = nullptr;
 IDWriteTextFormat* bigTxt = nullptr;
 
 ID2D1Bitmap* bmpSnow = nullptr;
@@ -181,7 +180,6 @@ void ReleaseResources()
 
     GarbageCollect(&iWriteFactory);
     GarbageCollect(&nrmTxt);
-    GarbageCollect(&midTxt);
     GarbageCollect(&bigTxt);
 
     GarbageCollect(&bmpAxe);
@@ -434,6 +432,102 @@ void GameOver()
     bMsg.message = WM_QUIT;
     bMsg.wParam = 0;
 }
+void ShowRecord()
+{
+    int result = 0;
+    CheckFile(record_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONEXCLAMATION);
+        MessageBox(bHwnd, L"Все още няма рекорд на играта !\n\nПостарай се повече !",
+            L"Липсва файл", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    wchar_t status_text[150] = L"НАЙ-ВЕЛИК ВЛАДЕТЕЛ: ";
+    wchar_t saved_name[16] = L"\0";
+    wchar_t add[5] = L"\0";
+    int txt_size = 0;
+
+    std::wifstream rec(record_file);
+    rec >> result;
+    for (int i = 0; i < 16; i++)
+    {
+        int letter = 0;
+        rec >> letter;
+        saved_name[i] = static_cast<wchar_t>(letter);
+    }
+    rec.close();
+
+    wcscat_s(status_text, saved_name);
+    wsprintf(add, L"%d", result);
+    wcscat_s(status_text, L"\nСВЕТОВЕН РЕКОРД: ");
+    wcscat_s(status_text, add);
+
+    for (int i = 0; i < 150; i++)
+    {
+        if (status_text[i] != '\0')txt_size++;
+        else break;
+    }
+
+    if (sound)mciSendString(L"play .\\res\\snd\\showrec.wav", NULL, NULL, NULL);
+    Draw->BeginDraw();
+    Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkBlue));
+    if (bigTxt && txtBrush)
+        Draw->DrawTextW(status_text, txt_size, bigTxt, D2D1::RectF(100.0f, scr_height / 2 - 200.0f,
+            scr_width, scr_height), txtBrush);
+    Draw->EndDraw();
+    Sleep(3500);
+}
+void ShowHelp()
+{
+    int result = 0;
+    CheckFile(help_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONEXCLAMATION);
+        MessageBox(bHwnd, L"Липсва помощ за играта !\n\nСвържете се с разработчика !",
+            L"Липсва файл", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    wchar_t status_text[1000] = L"\0";
+    
+    std::wifstream rec(help_file);
+    rec >> result;
+    for (int i = 1; i < 1000; i++)
+    {
+        int letter = 0;
+        rec >> letter;
+        status_text[i] = static_cast<wchar_t>(letter);
+    }
+    rec.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\help.wav", NULL, NULL, NULL);
+    
+    Draw->BeginDraw();
+    Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkBlue));
+    if (butBckg && nrmTxt && txtBrush && txtHgltBrush && txtInactBrush)
+    {
+        Draw->FillRectangle(D2D1::RectF(0, 0, scr_width, 50.0f), butBckg);
+        if (name_set)
+            Draw->DrawTextW(L"ИМЕ НА ИГРАЧ", 13, nrmTxt, b1TxtRect, txtInactBrush);
+        else
+        {
+            if (!b1Hglt)Draw->DrawTextW(L"ИМЕ НА ИГРАЧ", 13, nrmTxt, b1TxtRect, txtBrush);
+            else Draw->DrawTextW(L"ИМЕ НА ИГРАЧ", 13, nrmTxt, b1TxtRect, txtHgltBrush);
+        }
+
+        if (!b2Hglt)Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmTxt, b2TxtRect, txtBrush);
+        else Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmTxt, b2TxtRect, txtHgltBrush);
+
+        if (!b3Hglt)Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmTxt, b3TxtRect, txtBrush);
+        else Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmTxt, b3TxtRect, txtHgltBrush);
+    }
+    if (nrmTxt && txtBrush)
+        Draw->DrawTextW(status_text, result, nrmTxt, D2D1::RectF(200.0f, 100.0f, scr_width, scr_height), txtBrush);
+    Draw->EndDraw();
+}
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -653,9 +747,9 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
 
 
 
-
-
-
+        case mHoF:
+            ShowRecord();
+            break;
         }
         break;
 
@@ -691,8 +785,22 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                 }
                 break;
             }
-
-
+            if (LOWORD(lParam) >= b3TxtRect.left && LOWORD(lParam) <= b3TxtRect.right)
+            {
+                if (!show_help)
+                {
+                    pause = true;
+                    show_help = true;
+                    ShowHelp();
+                    break;
+                }
+                else
+                {
+                    pause = false;
+                    show_help = false;
+                    break;
+                }
+            }
         }
         else
         {
@@ -1009,7 +1117,7 @@ void CreateResourses()
     }
 
     if (iWriteFactory)
-        hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_OBLIQUE,
+        hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_OBLIQUE,
             DWRITE_FONT_STRETCH_NORMAL, 20.0f, L"", &nrmTxt);
     if (hr != S_OK)
     {
@@ -1017,15 +1125,7 @@ void CreateResourses()
         ErrExit(eD2D);
     }
     
-    if (iWriteFactory)
-        hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_OBLIQUE,
-            DWRITE_FONT_STRETCH_NORMAL, 36.0f, L"", &midTxt);
-    if (hr != S_OK)
-    {
-        ErrorLog(L"Error creating midTxt");
-        ErrExit(eD2D);
-    }
-
+    
     if (iWriteFactory)
         hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_OBLIQUE,
             DWRITE_FONT_STRETCH_NORMAL, 64.0f, L"", &bigTxt);
@@ -2308,6 +2408,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             GameOver();
         }
         if (!TownHall)GameOver();
+        if (wood < 25 && vHeroes.empty())
+        {
+            if (sound)mciSendString(L"play .\\res\\snd\\loose.wav", NULL, NULL, NULL);
+            Draw->BeginDraw();
+            Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkBlue));
+            if (bigTxt && txtBrush)
+                Draw->DrawTextW(L"НЕДОСТАТЪЧНО РЕСУРСИ ДА НАЕМЕШ РАБОТНА РЪКА !\nИГРАТА СВЪРШИ !", 60, bigTxt, 
+                    D2D1::RectF(100.0f, 100.0f, scr_width, scr_height), txtBrush);
+            Draw->EndDraw();
+            Sleep(3500);
+            
+            GameOver();
+        }
     }
 
     std::remove(tmp_file);
