@@ -30,7 +30,7 @@
 
 #define tmp_file ".\\res\\data\\temp.dat"
 #define Ltmp_file L".\\res\\data\\temp.dat"
-#define snd_file L".\\res\\snd\\main.dat"
+#define snd_file L".\\res\\snd\\main.wav"
 #define help_file L".\\res\\data\\help.dat"
 #define record_file L".\\res\\data\\record.dat"
 #define save_file L".\\res\\data\\save.dat"
@@ -222,7 +222,6 @@ void InitGame()
     win_percentage = 0;
     win_game = false;
 
-
     vAxes.clear();
     
     if (!vHomes.empty())
@@ -385,9 +384,11 @@ void GameOver()
 {
     KillTimer(bHwnd, bTimer);
     PlaySound(NULL, NULL, NULL);
+    
     if (win_game)
     {
         score += static_cast<int>(1000 * game_speed);
+        score += (int)(secs * game_speed);
         PlaySound(L".\\res\\snd\\tada.wav", NULL, SND_ASYNC);
 
         Draw->BeginDraw();
@@ -528,6 +529,293 @@ void ShowHelp()
         Draw->DrawTextW(status_text, result, nrmTxt, D2D1::RectF(200.0f, 100.0f, scr_width, scr_height), txtBrush);
     Draw->EndDraw();
 }
+void SaveGame()
+{
+    int result = 0;
+    CheckFile(save_file, &result);
+
+    if (result == FILE_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONEXCLAMATION);
+        if (MessageBox(bHwnd, L"Съществува предишна записана игра !\n\nДа запиша ли сегашната върху нея ?",
+            L"Презапис !", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO) return;
+    }
+
+    std::wofstream save(save_file);
+
+    save << score << std::endl;
+    save << mins << std::endl;
+    save << secs << std::endl;
+    save << name_set << std::endl;
+    save << wood << std::endl;
+    save << win_percentage << std::endl;
+    save << win_game << std::endl;
+
+    for (int i = 0; i < 16; i++)save << static_cast<int>(current_player[i]) << std::endl;
+
+    for (int row = 0; row < 14; row++)
+        for (int col = 0; col < 20; col++)
+            save << static_cast<int>(FieldGrid[row][col]->type) << std::endl;
+    
+    if (!TownHall)save << -1 << std::endl;
+    else
+    {
+        save << TownHall->x << std::endl;
+        save << TownHall->y << std::endl;
+        save << TownHall->lifes << std::endl;
+    }
+
+    save << vHomes.size() << std::endl;
+    if (vHomes.size() > 0)
+    {
+        for (int i = 0; i < vHomes.size(); i++)
+        {
+            save << vHomes[i]->x << std::endl;
+            save << vHomes[i]->y << std::endl;
+            save << vHomes[i]->lifes << std::endl;
+        }
+    }
+
+    save << vWalls.size() << std::endl;
+    if (vWalls.size() > 0)
+    {
+        for (int i = 0; i < vWalls.size(); i++)
+        {
+            save << vWalls[i]->x << std::endl;
+            save << vWalls[i]->y << std::endl;
+            save << vWalls[i]->lifes << std::endl;
+        }
+    }
+
+    save << vTowers.size() << std::endl;
+    if (vTowers.size() > 0)
+    {
+        for (int i = 0; i < vTowers.size(); i++)
+        {
+            save << vTowers[i]->x << std::endl;
+            save << vTowers[i]->y << std::endl;
+            save << vTowers[i]->lifes << std::endl;
+        }
+    }
+
+    save << vTrees.size() << std::endl;
+    if (vTrees.size() > 0)
+    {
+        for (int i = 0; i < vTrees.size(); i++)
+        {
+            save << vTrees[i]->x << std::endl;
+            save << vTrees[i]->y << std::endl;
+            save << vTrees[i]->lifes << std::endl;
+        }
+    }
+
+    save << vHeroes.size() << std::endl;
+    if (vHeroes.size() > 0)
+    {
+        for (int i = 0; i < vHeroes.size(); i++)
+        {
+            save << vHeroes[i]->x << std::endl;
+            save << vHeroes[i]->y << std::endl;
+            save << vHeroes[i]->lifes << std::endl;
+        }
+    }
+
+    save << vEvils.size() << std::endl;
+    if (vEvils.size() > 0)
+    {
+        for (int i = 0; i < vEvils.size(); i++)
+        {
+            save << static_cast<int>(vEvils[i]->type) << std::endl;
+            save << vEvils[i]->x << std::endl;
+            save << vEvils[i]->y << std::endl;
+            save << vEvils[i]->lifes << std::endl;
+        }
+    }
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+    MessageBox(bHwnd, L"Играта е успешно запазена", L"Запис", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
+}
+void LoadGame()
+{
+    int result = 0;
+    CheckFile(save_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONEXCLAMATION);
+        MessageBox(bHwnd, L"Липсва предишна записана игра !\n\nПостарай се повече !",
+            L"Липсва файл", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+    else
+    {
+        if (sound)MessageBeep(MB_ICONEXCLAMATION);
+        if (MessageBox(bHwnd, L"Настоящата игра ще бъде изгубена !\n\nДа запиша ли предишната върху нея ?",
+            L"Презапис !", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO) return;
+    }
+
+    vAxes.clear();
+
+    if (!vHomes.empty())
+        for (int i = 0; i < vHomes.size(); i++)vHomes[i]->Release();
+    if (!vTrees.empty())
+        for (int i = 0; i < vTrees.size(); i++)vTrees[i]->Release();
+    if (!vTowers.empty())
+        for (int i = 0; i < vTowers.size(); i++)vTowers[i]->Release();
+    if (!vWalls.empty())
+        for (int i = 0; i < vWalls.size(); i++)vWalls[i]->Release();
+    if (!vFires.empty())
+        for (int i = 0; i < vFires.size(); i++)vFires[i]->Release();
+
+    vHomes.clear();
+    vTrees.clear();
+    vTowers.clear();
+    vWalls.clear();
+    vFires.clear();
+
+    delete TownHall;
+    TownHall = nullptr;
+
+    if (!vHeroes.empty())
+        for (int i = 0; i < vHeroes.size(); i++) vHeroes[i]->Release();
+    vHeroes.clear();
+
+    if (!vEvils.empty())
+        for (int i = 0; i < vEvils.size(); i++) vEvils[i]->Release();
+    vEvils.clear();
+
+    std::wifstream save(save_file);
+
+    save >> score;
+    save >> mins;
+    save >> secs;
+    save >> name_set;
+    save >> wood;
+    save >> win_percentage;
+    save >> win_game;
+
+    for (int i = 0; i < 16; i++)
+    {
+        int letter = 0;
+        save >> letter;
+        current_player[i] = static_cast<wchar_t>(letter);
+    }
+
+    for (int row = 0; row < 14; row++)
+        for (int col = 0; col < 20; col++)
+        {
+            int atype = -1;
+            save >> atype;
+            FieldGrid[row][col]->type = static_cast<buildings>(atype);
+        }
+
+    float temp_x = 0;
+    float temp_y = 0;
+
+    save >> temp_x;
+    if (temp_x > 0)
+    {
+        save >> temp_y;
+        save >> result;
+        TownHall = dll::BUILDING::TileFactory(buildings::townhall, temp_x, temp_y);
+        TownHall->lifes = result;
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        int temp_lifes = 0;
+
+        for (int i = 0; i < result; i++)
+        {
+            save >> temp_x;
+            save >> temp_y;
+            save >> temp_lifes;
+            vHomes.push_back(dll::BUILDING::TileFactory(buildings::home, temp_x, temp_y));
+            vHomes.back()->lifes = temp_lifes;
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        int temp_lifes = 0;
+
+        for (int i = 0; i < result; i++)
+        {
+            save >> temp_x;
+            save >> temp_y;
+            save >> temp_lifes;
+            vWalls.push_back(dll::BUILDING::TileFactory(buildings::wall, temp_x, temp_y));
+            vWalls.back()->lifes = temp_lifes;
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        int temp_lifes = 0;
+
+        for (int i = 0; i < result; i++)
+        {
+            save >> temp_x;
+            save >> temp_y;
+            save >> temp_lifes;
+            vTowers.push_back(dll::BUILDING::TileFactory(buildings::tower, temp_x, temp_y));
+            vTowers.back()->lifes = temp_lifes;
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        int temp_lifes = 0;
+
+        for (int i = 0; i < result; i++)
+        {
+            save >> temp_x;
+            save >> temp_y;
+            save >> temp_lifes;
+            vTrees.push_back(dll::BUILDING::TileFactory(buildings::tree, temp_x, temp_y));
+            vTrees.back()->lifes = temp_lifes;
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        int temp_lifes = 0;
+
+        for (int i = 0; i < result; i++)
+        {
+            save >> temp_x;
+            save >> temp_y;
+            save >> temp_lifes;
+            vHeroes.push_back(dll::CreatureFactory(creatures::hero, temp_x, temp_y));
+            vHeroes.back()->lifes = temp_lifes;
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        int temp_type = -1;
+        int temp_lifes = 0;
+
+        for (int i = 0; i < result; i++)
+        {
+            save >> temp_type;
+            save >> temp_x;
+            save >> temp_y;
+            save >> temp_lifes;
+            vEvils.push_back(dll::CreatureFactory(static_cast<creatures>(temp_type), temp_x, temp_y));
+            vEvils.back()->lifes = temp_lifes;
+        }
+    }
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+    MessageBox(bHwnd, L"Играта е успешно заредена", L"Зареждане", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
+
+}
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -587,7 +875,7 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
         AppendMenu(bMain, MF_STRING, mExit, L"Изход");
 
         AppendMenu(bStore, MF_STRING, mSave, L"Запази игра");
-        AppendMenu(bStore, MF_STRING, mLoad, L"Зареди режим");
+        AppendMenu(bStore, MF_STRING, mLoad, L"Зареди игра");
         AppendMenu(bStore, MF_SEPARATOR, NULL, NULL);
         AppendMenu(bStore, MF_STRING, mHoF, L"Зала на славата");
         SetMenu(hwnd, bBar);
@@ -744,8 +1032,17 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
             SendMessage(hwnd, WM_CLOSE, NULL, NULL);
             break;
 
+        case mSave:
+            pause = true;
+            SaveGame();
+            pause = false;
+            break;
 
-
+        case mLoad:
+            pause = true;
+            LoadGame();
+            pause = false;
+            break;
 
         case mHoF:
             ShowRecord();
@@ -1288,6 +1585,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     bIns = hInstance;
     if (!bIns)ErrExit(eClass);
     CreateResourses();
+
+    PlaySound(snd_file, NULL, SND_ASYNC | SND_LOOP);
 
     while (bMsg.message != WM_QUIT)
     {
